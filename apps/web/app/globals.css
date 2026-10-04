@@ -1,7 +1,26 @@
-@import "@moviewatch/ui/globals.css";
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Design tokens — inlined here (not @imported) for reliability.
+   All text/background pairings verified for WCAG contrast:
+   - --mw-text on --mw-bg: 17.5:1 (AAA)
+   - --mw-text-muted on --mw-bg: 7.7:1 (AAA) — minimum for body text
+   - --mw-on-gold on --mw-gold: 10.4:1 (AAA) — NEVER white text on gold (1.91:1 FAIL) */
+:root {
+  --mw-bg: #0a0a0b;
+  --mw-surface: #141416;
+  --mw-surface-2: #1c1c1f;
+  --mw-text: #f4f1ea;
+  --mw-text-muted: #a1a1aa;
+  --mw-text-faint: #71717a;
+  --mw-gold: #e8b34b;
+  --mw-on-gold: #0a0a0b;
+  --mw-gold-soft: rgba(232, 179, 75, 0.14);
+  --mw-border: #27272a;
+  --mw-success: #4ade80;
+  --mw-danger: #f87171;
+}
 
 body {
   background: var(--mw-bg);
@@ -94,4 +113,30 @@ input, select, textarea {
 :focus-visible {
   outline: 2px solid var(--mw-gold);
   outline-offset: 2px;
+}
+
+/* ---------- keyframes for signature effects (inlined for reliability) ---------- */
+
+@keyframes mw-spotlight-drift {
+  0%, 100% { transform: translateX(-12%) scale(1); opacity: 0.9; }
+  50% { transform: translateX(12%) scale(1.08); opacity: 1; }
+}
+
+@keyframes mw-shimmer-sweep {
+  0% { transform: translateX(-120%) skewX(-18deg); }
+  100% { transform: translateX(240%) skewX(-18deg); }
+}
+
+@keyframes mw-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
