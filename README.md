@@ -65,3 +65,4 @@ and the web shows a setup notice — no crashes, no key leaks.
 - Theater credentials and card data: **never stored** — see `../PLAN.md` §7–§8 for the architecture.
 
 Full product/architecture plan: [`../PLAN.md`](../PLAN.md).
+
