@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import {
   DatabaseNotConfiguredError,
@@ -27,6 +26,40 @@ import {
   type PolicyDocument,
 } from "@moviewatch/policy-engine";
 import { sendError } from "../lib/errors.js";
+import { writeAudit } from "../lib/audit.js";
+import { sendEmail, watchCreatedEmail, watchArmedEmail } from "../lib/email.js";
+
+function webOrigin(): string {
+  return process.env.WEB_ORIGIN ?? "http://localhost:3000";
+}
+
+/** Best-effort "watch created" notification. Never throws (caller catches). */
+async function sendWatchCreatedEmail(
+  watch: WatchWithPrefs,
+  userEmail: string,
+): Promise<void> {
+  const pref = watch.preferences[0];
+  if (!pref) return;
+  const { subject, html } = watchCreatedEmail({
+    movieTitle: watch.movieTitle,
+    zip: watch.zip,
+    ticketCount: pref.ticketCount,
+    maxTicketPriceCents: pref.maxTicketPriceCents,
+    maxTotalCents: watch.maxTotalCents ?? pref.maxTicketPriceCents * pref.ticketCount,
+    autoBookEnabled: watch.autoBookEnabled,
+    appUrl: `${webOrigin()}/watches`,
+  });
+  await sendEmail({ to: userEmail, subject, html });
+}
+
+/** Best-effort "monitoring armed" notification. Never throws. */
+async function sendWatchArmedEmail(watch: WatchWithPrefs, userEmail: string): Promise<void> {
+  const { subject, html } = watchArmedEmail({
+    movieTitle: watch.movieTitle,
+    appUrl: `${webOrigin()}/watches`,
+  });
+  await sendEmail({ to: userEmail, subject, html });
+}
 
 /**
  * Watch lifecycle routes (Milestone 3). All routes are protected and
@@ -58,29 +91,6 @@ function dbOr503(reply: FastifyReply): Db | null {
 
 function zodDetails(err: { issues: { message: string }[] }): string {
   return err.issues.map((i) => i.message).join("; ");
-}
-
-async function writeAudit(
-  db: Db,
-  e: {
-    actorType: string;
-    actorId: string;
-    action: string;
-    resourceType: string;
-    resourceId: string;
-    policyVersion?: number;
-  },
-): Promise<void> {
-  const last = await db.auditLog.findFirst({
-    where: { resourceType: e.resourceType, resourceId: e.resourceId },
-    orderBy: { createdAt: "desc" },
-    select: { hash: true },
-  });
-  const prevHash = last?.hash ?? null;
-  const hash = createHash("sha256")
-    .update(JSON.stringify({ ...e, prevHash, at: new Date().toISOString() }))
-    .digest("hex");
-  await db.auditLog.create({ data: { ...e, prevHash, hash } });
 }
 
 function toPreferenceInput(p: {
@@ -127,6 +137,9 @@ function presentWatch(w: {
   policyVersion: number;
   policyDocument: string | null;
   consentRecord: string | null;
+  autoBookEnabled: boolean;
+  consentAt: Date | null;
+  maxTotalCents: number | null;
   createdAt: Date;
   updatedAt: Date;
   preferences: Parameters<typeof toPreferenceInput>[0][];
@@ -156,6 +169,9 @@ function presentWatch(w: {
     policyVersion: w.policyVersion,
     preferences: w.preferences.map(toPreferenceInput),
     policy,
+    autoBookEnabled: w.autoBookEnabled,
+    consentAt: w.consentAt?.toISOString() ?? null,
+    maxTotalCents: w.maxTotalCents,
     createdAt: w.createdAt.toISOString(),
     updatedAt: w.updatedAt.toISOString(),
   };
@@ -164,6 +180,7 @@ function presentWatch(w: {
 function policyInputFor(
   watch: { id: string; userId: string; tmdbId: number; expiresAt: Date | null },
   preference: { maxTicketPriceCents: number; ticketCount: number; theatersRank1: string[]; theatersRank2: string[] },
+  maxTotalCents?: number,
 ): MintPolicyInput {
   return {
     watchId: watch.id,
@@ -171,6 +188,7 @@ function policyInputFor(
     tmdbId: watch.tmdbId,
     preference,
     expiresAt: (watch.expiresAt ?? new Date(Date.now() + 180 * 24 * 3600 * 1000)).toISOString(),
+    ...(maxTotalCents !== undefined ? { maxTotalCents } : {}),
   };
 }
 
@@ -217,6 +235,14 @@ export async function watchesRoutes(app: FastifyInstance) {
     if (!db) return;
     const userId = req.auth.userId;
 
+    // Auto-booking request: validate the cap now so the policy preview
+    // covers exactly what the user will be asked to authorize.
+    const autoBookEnabled = input.autoBook.enabled;
+    const requestedMaxTotalCents = autoBookEnabled ? input.autoBook.maxTotalCents : undefined;
+    if (autoBookEnabled && !requestedMaxTotalCents) {
+      return sendError(reply, 400, "Auto-booking requires maxTotalCents (spending cap)");
+    }
+
     const watch: WatchWithPrefs = await db.movieWatch.create({
       data: {
         userId,
@@ -224,6 +250,8 @@ export async function watchesRoutes(app: FastifyInstance) {
         movieTitle: input.movieTitle,
         zip: input.zip,
         expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+        autoBookEnabled,
+        maxTotalCents: requestedMaxTotalCents ?? null,
         preferences: { create: preferenceData(input.preference) },
       },
       include: prefsInclude,
@@ -237,18 +265,27 @@ export async function watchesRoutes(app: FastifyInstance) {
       resourceId: watch.id,
     });
 
+    // Best-effort "watch created" email — never fails the request.
+    void sendWatchCreatedEmail(watch, req.auth.email).catch((err) =>
+      req.log.warn({ err }, "watch-created email failed"),
+    );
+
     // Policy preview: terms the user will review before arming (unsigned).
     let preview: { terms: unknown; termsHash: string } | null = null;
     try {
       const pref = watch.preferences[0];
       if (!pref) throw new PolicyError("watch has no preference");
       const doc = buildPolicyDocument(
-        policyInputFor(watch, {
-          maxTicketPriceCents: pref.maxTicketPriceCents,
-          ticketCount: pref.ticketCount,
-          theatersRank1: pref.theatersRank1,
-          theatersRank2: pref.theatersRank2,
-        }),
+        policyInputFor(
+          watch,
+          {
+            maxTicketPriceCents: pref.maxTicketPriceCents,
+            ticketCount: pref.ticketCount,
+            theatersRank1: pref.theatersRank1,
+            theatersRank2: pref.theatersRank2,
+          },
+          requestedMaxTotalCents,
+        ),
       );
       preview = { terms: policyTerms(doc), termsHash: policyTermsHash(doc) };
     } catch (err) {
@@ -360,18 +397,58 @@ export async function watchesRoutes(app: FastifyInstance) {
       return sendError(reply, 409, `Watch is ${watch.status} — only CREATED watches can be armed`);
     }
 
+    // --- Auto-booking gate -------------------------------------------------
+    // When auto-book is enabled the user must have explicitly authorized a
+    // purchase: a saved card on file, a spending cap, and the authorization
+    // text. No charge can ever happen without all three.
+    const autoBook = parsed.data.autoBook;
+    let paymentMethodId: string | null = null;
+    if (autoBook.enabled) {
+      if (!autoBook.maxTotalCents) {
+        return sendError(reply, 400, "Auto-booking requires maxTotalCents (spending cap)");
+      }
+      if (watch.maxTotalCents !== null && autoBook.maxTotalCents !== watch.maxTotalCents) {
+        return sendError(
+          reply,
+          400,
+          "Spending cap changed since review",
+          undefined,
+          "Recreate the watch with the new cap and review the policy again.",
+        );
+      }
+      if (!autoBook.paymentMethodId) {
+        return sendError(reply, 400, "Auto-booking requires a saved payment method");
+      }
+      if (!autoBook.purchaseAuthorization) {
+        return sendError(reply, 400, "Auto-booking requires explicit purchase authorization");
+      }
+      const pm = await db.paymentMethod.findFirst({
+        where: { id: autoBook.paymentMethodId, userId },
+      });
+      if (!pm) {
+        return sendError(reply, 400, "Payment method not found — add a card first");
+      }
+      paymentMethodId = pm.id;
+    }
+
     // Re-mint from server-side state and bind the user's acceptance to it.
+    // The cap flows into the policy so the signed document can never
+    // authorize more than the user allowed.
     let minted: { document: PolicyDocument; signature: string };
     try {
       const pref = watch.preferences[0];
       if (!pref) throw new PolicyError("watch has no preference");
       minted = mintPolicy(
-        policyInputFor(watch, {
-          maxTicketPriceCents: pref.maxTicketPriceCents,
-          ticketCount: pref.ticketCount,
-          theatersRank1: pref.theatersRank1,
-          theatersRank2: pref.theatersRank2,
-        }),
+        policyInputFor(
+          watch,
+          {
+            maxTicketPriceCents: pref.maxTicketPriceCents,
+            ticketCount: pref.ticketCount,
+            theatersRank1: pref.theatersRank1,
+            theatersRank2: pref.theatersRank2,
+          },
+          autoBook.enabled ? (autoBook.maxTotalCents ?? undefined) : undefined,
+        ),
       );
     } catch (err) {
       if (err instanceof PolicyError) return sendError(reply, 400, "Policy rejected", undefined, err.message);
@@ -393,11 +470,24 @@ export async function watchesRoutes(app: FastifyInstance) {
       return sendError(reply, 409, `Cannot transition ${watch.status} → ${next}`);
     }
 
+    const consentAt = new Date();
     const consentRecord = JSON.stringify({
       accepted: true,
       summary: parsed.data.consent.summary,
-      acceptedAt: new Date().toISOString(),
+      acceptedAt: consentAt.toISOString(),
       actorId: userId,
+      // Auto-booking authorization (only present when enabled). The monitor
+      // may charge paymentMethodId off-session, never above maxTotalCents.
+      ...(autoBook.enabled
+        ? {
+            autoBook: {
+              enabled: true,
+              maxTotalCents: autoBook.maxTotalCents,
+              paymentMethodId,
+              purchaseAuthorization: autoBook.purchaseAuthorization,
+            },
+          }
+        : {}),
     });
 
     const armed: WatchWithPrefs = await db.movieWatch.update({
@@ -409,6 +499,9 @@ export async function watchesRoutes(app: FastifyInstance) {
         policySignature: minted.signature,
         policyVersion: { increment: 1 },
         consentRecord,
+        autoBookEnabled: autoBook.enabled,
+        consentAt,
+        maxTotalCents: autoBook.enabled ? (autoBook.maxTotalCents ?? null) : null,
       },
       include: prefsInclude,
     });
@@ -421,6 +514,12 @@ export async function watchesRoutes(app: FastifyInstance) {
       resourceId: watch.id,
       policyVersion: armed.policyVersion,
     });
+
+    // Best-effort "armed" email — never fails the request.
+    void sendWatchArmedEmail(armed, req.auth.email).catch((err) =>
+      req.log.warn({ err }, "watch-armed email failed"),
+    );
+
     return presentWatch(armed);
   });
 
@@ -449,6 +548,11 @@ export async function watchesRoutes(app: FastifyInstance) {
         policyDocument: null,
         policySignature: null,
         consentRecord: null,
+        // Standing down revokes auto-booking — re-arming requires fresh
+        // consent and a fresh spending authorization.
+        autoBookEnabled: false,
+        consentAt: null,
+        maxTotalCents: null,
       },
       include: prefsInclude,
     });
