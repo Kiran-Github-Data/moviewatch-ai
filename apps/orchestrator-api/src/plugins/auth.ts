@@ -13,17 +13,47 @@ declare module "fastify" {
 interface AuthPluginOptions {
   jwksUrl: string;
   issuer: string;
+  clerkSecretKey: string;
 }
 
 export interface VerifiedClaims {
   clerkUserId: string;
-  email: string;
+  /** May be undefined — Clerk session tokens don't include email by default. */
+  email?: string;
+}
+
+/**
+ * Fetch the user's primary email from Clerk's Backend API.
+ * Session tokens don't include email by default (requires dashboard config),
+ * so we look it up via the Backend API using the verified user ID.
+ */
+async function fetchClerkEmail(
+  clerkUserId: string,
+  secretKey: string,
+): Promise<string | undefined> {
+  try {
+    const res = await fetch(`https://api.clerk.com/v1/users/${clerkUserId}`, {
+      headers: { Authorization: `Bearer ${secretKey}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) return undefined;
+    const data = (await res.json()) as {
+      email_addresses?: Array<{ id: string; email_address: string }>;
+      primary_email_address_id?: string;
+    };
+    const primary = data.email_addresses?.find(
+      (e) => e.id === data.primary_email_address_id,
+    );
+    return primary?.email_address ?? data.email_addresses?.[0]?.email_address;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
  * Pure JWT verifier — split out so it can be unit-tested with a local
  * key set (see auth.test.ts). Rejects: bad signature, expiry, wrong issuer,
- * missing sub/email claims.
+ * missing sub claim. Email is optional (fetched via Backend API if absent).
  */
 export function createTokenVerifier(opts: {
   issuer: string;
@@ -43,8 +73,8 @@ export function createTokenVerifier(opts: {
 
     const clerkUserId = payload.sub;
     const email = typeof payload.email === "string" ? payload.email : undefined;
-    if (!clerkUserId || !email) {
-      throw Object.assign(new Error("Token missing sub/email claims"), { statusCode: 401 });
+    if (!clerkUserId) {
+      throw Object.assign(new Error("Token missing sub claim"), { statusCode: 401 });
     }
     return { clerkUserId, email };
   };
@@ -74,7 +104,17 @@ export const authPlugin = fp(
         throw Object.assign(new Error("Missing bearer token"), { statusCode: 401 });
       }
       const token = header.slice("Bearer ".length);
-      const { clerkUserId, email } = await verify(token);
+      const { clerkUserId, email: tokenEmail } = await verify(token);
+
+      // Token may not include email (requires Clerk dashboard config);
+      // fall back to Clerk Backend API lookup.
+      let email = tokenEmail;
+      if (!email) {
+        email = await fetchClerkEmail(clerkUserId, opts.clerkSecretKey);
+      }
+      if (!email) {
+        throw Object.assign(new Error("Could not determine user email"), { statusCode: 401 });
+      }
 
       const user = await getPrisma().user.upsert({
         where: { clerkUserId },

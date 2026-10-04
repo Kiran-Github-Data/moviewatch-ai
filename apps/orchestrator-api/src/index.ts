@@ -46,6 +46,7 @@ await app.register(protectedRoutes, {
   prefix: "/api/v1",
   jwksUrl: env.CLERK_JWKS_URL,
   issuer: env.CLERK_ISSUER,
+  clerkSecretKey: env.CLERK_SECRET_KEY,
 });
 
 app.setNotFoundHandler(notFound);

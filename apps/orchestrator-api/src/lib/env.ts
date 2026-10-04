@@ -5,6 +5,9 @@ const EnvSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   CLERK_JWKS_URL: z.string().url(),
   CLERK_ISSUER: z.string().url(),
+  // Clerk secret key — used to fetch user email from Clerk Backend API
+  // (session tokens don't include email by default).
+  CLERK_SECRET_KEY: z.string().min(1),
   DATABASE_URL: z.string().min(1),
   WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
   // TMDB (Milestone 2). v4 read-access token preferred; v3 API key also works.

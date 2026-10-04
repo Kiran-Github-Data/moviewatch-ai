@@ -70,10 +70,12 @@ describe("createTokenVerifier", () => {
     await assert.rejects(() => verify(token), /Invalid or expired token/);
   });
 
-  it("rejects a token missing the email claim", async () => {
+  it("accepts a token missing the email claim (email fetched via Backend API)", async () => {
     const { verify, sign } = await makeVerifier();
     const token = await sign({ sub: "user_123" });
-    await assert.rejects(() => verify(token), /missing sub\/email/);
+    const claims = await verify(token);
+    assert.equal(claims.clerkUserId, "user_123");
+    assert.equal(claims.email, undefined);
   });
 
   it("rejects garbage", async () => {

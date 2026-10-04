@@ -5,6 +5,7 @@ import { watchesRoutes } from "./watches.js";
 interface ProtectedRoutesOptions {
   jwksUrl: string;
   issuer: string;
+  clerkSecretKey: string;
 }
 
 /**
@@ -13,7 +14,11 @@ interface ProtectedRoutesOptions {
  * registered here — and to nothing outside it (e.g. /health stays public).
  */
 export async function protectedRoutes(app: FastifyInstance, opts: ProtectedRoutesOptions) {
-  await app.register(authPlugin, { jwksUrl: opts.jwksUrl, issuer: opts.issuer });
+  await app.register(authPlugin, {
+    jwksUrl: opts.jwksUrl,
+    issuer: opts.issuer,
+    clerkSecretKey: opts.clerkSecretKey,
+  });
 
   // Authenticated probe: proves JWT verification + user upsert work.
   app.get("/me", async (request) => ({ user: request.auth }));
