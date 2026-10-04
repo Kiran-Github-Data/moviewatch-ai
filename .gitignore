@@ -1,0 +1,22 @@
+node_modules/
+.next/
+dist/
+build/
+out/
+.turbo/
+*.tsbuildinfo
+
+# env
+.env
+.env*.local
+
+# prisma
+prisma/migrations/**/migration.sql.lock
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/*
+
+# logs
+*.log
