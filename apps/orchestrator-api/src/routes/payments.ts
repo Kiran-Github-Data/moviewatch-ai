@@ -83,6 +83,7 @@ export async function paymentsRoutes(app: FastifyInstance) {
       success_url: `${origin}/watches/new?payment=added`,
       cancel_url: `${origin}/watches/new?payment=cancelled`,
       metadata: { userId: user.id },
+      currency: "usd",
     });
 
     await writeAudit(db, {
