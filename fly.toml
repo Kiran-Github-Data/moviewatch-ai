@@ -33,9 +33,12 @@ primary_region = "dfw"
 
 # Monitoring worker (Milestone 5): checks ARMED watches every 15 min and
 # auto-books when authorized. Runs as a separate machine without public ports.
+# Agent worker (Milestone 6): LangGraph deep agent — LLM-powered preference
+# matching with code-gated purchases. Idles when ANTHROPIC_API_KEY is unset.
 [processes]
   app = "pnpm --filter @moviewatch/orchestrator-api exec tsx src/index.ts"
   worker = "pnpm --filter @moviewatch/orchestrator-api exec tsx src/worker.ts"
+  agent_worker = "pnpm --filter @moviewatch/orchestrator-api exec tsx src/agent/scheduler.ts"
 
 [[vm]]
   memory = "512mb"

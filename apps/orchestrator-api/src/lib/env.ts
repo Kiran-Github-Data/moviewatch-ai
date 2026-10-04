@@ -24,6 +24,11 @@ const EnvSchema = z.object({
   // until configured. Never log these values (see logger redaction).
   STRIPE_SECRET_KEY: z.string().min(1).optional(),
   STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+  // LangGraph deep agent (Milestone 6). Optional at boot — the agent
+  // scheduler logs a warning and idles when unset. Never log this value.
+  ANTHROPIC_API_KEY: z.string().min(1).optional(),
+  AGENT_MODEL: z.string().min(1).optional(),
+  AGENT_CRON: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
