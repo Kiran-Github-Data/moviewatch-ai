@@ -1,0 +1,25 @@
+import type { FastifyInstance } from "fastify";
+import { authPlugin } from "../plugins/auth.js";
+import { watchesRoutes } from "./watches.js";
+
+interface ProtectedRoutesOptions {
+  jwksUrl: string;
+  issuer: string;
+}
+
+/**
+ * All routes in this plugin require a verified Clerk JWT. Fastify
+ * encapsulation means the auth onRequest hook applies to every route
+ * registered here — and to nothing outside it (e.g. /health stays public).
+ */
+export async function protectedRoutes(app: FastifyInstance, opts: ProtectedRoutesOptions) {
+  await app.register(authPlugin, { jwksUrl: opts.jwksUrl, issuer: opts.issuer });
+
+  // Authenticated probe: proves JWT verification + user upsert work.
+  app.get("/me", async (request) => ({ user: request.auth }));
+
+  // Milestone 3: watch lifecycle (auth hook from authPlugin applies here too).
+  await app.register(watchesRoutes);
+
+  // Milestones 4+: provider-accounts, payments, …
+}
