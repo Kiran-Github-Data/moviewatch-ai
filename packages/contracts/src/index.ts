@@ -177,6 +177,18 @@ export const BookingPreferenceInputSchema = z.object({
 });
 export type BookingPreferenceInput = z.infer<typeof BookingPreferenceInputSchema>;
 
+/**
+ * How often the monitoring agent checks a watch. The scheduler ticks at the
+ * finest granularity (15 min) and only checks watches whose interval elapsed.
+ */
+export const CheckFrequencySchema = z.enum([
+  "every_15_min",
+  "hourly",
+  "every_6_hours",
+  "daily",
+]);
+export type CheckFrequency = z.infer<typeof CheckFrequencySchema>;
+
 export const CreateWatchInputSchema = z.object({
   tmdbId: z.number().int().positive(),
   movieTitle: z.string().min(1).max(200),
@@ -193,6 +205,11 @@ export const CreateWatchInputSchema = z.object({
    * The spending cap feeds the policy preview so the reviewed hash covers it.
    */
   actionMode: z.enum(["notify", "autobook"]).default("notify"),
+  /**
+   * Monitoring schedule for this watch. The agent checks at most this often;
+   * finer schedules catch fast-selling releases sooner.
+   */
+  checkFrequency: CheckFrequencySchema.default("every_15_min"),
   autoBook: z
     .object({
       enabled: z.boolean(),
@@ -239,6 +256,8 @@ export const ArmWatchInputSchema = z.object({
    * - "autobook": automatically purchase within spending cap
    */
   actionMode: z.enum(["notify", "autobook"]).default("notify"),
+  /** Monitoring schedule override at arm time. */
+  checkFrequency: CheckFrequencySchema.default("every_15_min"),
   /**
    * Auto-booking (Milestone 5). When enabled the monitor may charge the
    * user's default saved card off-session, never exceeding maxTotalCents.
