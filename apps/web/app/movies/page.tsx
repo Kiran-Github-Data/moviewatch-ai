@@ -6,6 +6,7 @@ import { TmdbAttribution } from "@/components/tmdb-attribution";
 import { Logo } from "@/components/landing";
 import { fetchMovies, isDiscoveryNotConfigured, type BrowseTab } from "@/lib/movies";
 import type { PagedMovies } from "@moviewatch/contracts";
+import { ArrowLeftIcon, ArrowRightIcon } from "@/components/icons";
 
 const TABS: { id: BrowseTab; label: string }[] = [
   { id: "upcoming", label: "Upcoming" },
@@ -55,21 +56,22 @@ export default async function MoviesPage({
     tab === "search" ? (q ? `Results for “${q}”` : "Search") : TABS.find((t) => t.id === tab)?.label;
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
-      <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
+    <main className="relative mx-auto max-w-6xl px-6 py-10">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-[30vh] bg-[radial-gradient(50%_40%_at_50%_0%,rgba(232,179,75,0.07),transparent_70%)]" aria-hidden />
+      <header className="relative mb-10 flex flex-wrap items-center justify-between gap-4">
         <Link href="/"><Logo /></Link>
         <SearchBox initial={tab === "search" ? q : ""} />
       </header>
 
-      <div className="mb-8 flex gap-2">
+      <div className="relative mb-10 flex gap-2">
         {TABS.map((t) => (
           <Link
             key={t.id}
             href={`/movies?tab=${t.id}`}
-            className={`rounded-full px-4 py-1.5 text-sm font-medium transition-colors ${
+            className={`rounded-full px-5 py-2 text-sm font-semibold transition-all duration-200 ${
               tab === t.id
-                ? "bg-gold text-black"
-                : "border border-white/10 bg-surface text-muted hover:text-white"
+                ? "bg-gradient-to-br from-amber-300 to-amber-500 text-black shadow-[0_4px_20px_rgba(232,179,75,0.3)]"
+                : "border border-white/10 bg-white/[0.03] text-white/55 hover:border-white/25 hover:text-white"
             }`}
           >
             {t.label}
@@ -77,7 +79,7 @@ export default async function MoviesPage({
         ))}
       </div>
 
-      <h1 className="mb-6 text-2xl font-bold tracking-tight">{heading}</h1>
+      <h1 className="relative mb-8 text-3xl font-bold tracking-tight">{heading}</h1>
 
       {!data || data.movies.length === 0 ? (
         <EmptyState
@@ -90,36 +92,36 @@ export default async function MoviesPage({
         />
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+          <div className="relative grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {data.movies.map((m, i) => (
               <MovieCard key={m.tmdbId} movie={m} index={i} />
             ))}
           </div>
-          <div className="mt-8 flex items-center justify-center gap-4">
+          <div className="mt-10 flex items-center justify-center gap-4">
             {page > 1 && (
               <Link
                 href={`/movies?tab=${tab}${q ? `&q=${encodeURIComponent(q)}` : ""}&page=${page - 1}`}
-                className="rounded-xl border border-white/10 px-4 py-2 text-sm hover:border-gold/40"
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2.5 text-sm font-medium transition-all hover:border-gold/40 hover:text-gold"
               >
-                ← Previous
+                <ArrowLeftIcon className="h-4 w-4" /> Previous
               </Link>
             )}
-            <span className="text-sm text-muted">
+            <span className="text-sm tabular-nums text-white/45">
               Page {data.page} of {data.totalPages}
             </span>
             {page < data.totalPages && (
               <Link
                 href={`/movies?tab=${tab}${q ? `&q=${encodeURIComponent(q)}` : ""}&page=${page + 1}`}
-                className="rounded-xl border border-white/10 px-4 py-2 text-sm hover:border-gold/40"
+                className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-5 py-2.5 text-sm font-medium transition-all hover:border-gold/40 hover:text-gold"
               >
-                Next →
+                Next <ArrowRightIcon className="h-4 w-4" />
               </Link>
             )}
           </div>
         </>
       )}
 
-      <TmdbAttribution className="mt-10 text-center" />
+      <TmdbAttribution className="mt-12 text-center" />
     </main>
   );
 }

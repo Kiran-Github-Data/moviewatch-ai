@@ -1,8 +1,8 @@
 /* MovieWatch AI cinematic theme — imported once in apps/web/app/globals.css */
 :root {
-  --mw-bg: #0a0a0f;
-  --mw-surface: #12121a;
-  --mw-surface-2: #1a1a26;
+  --mw-bg: #08080c;
+  --mw-surface: #101016;
+  --mw-surface-2: #17171f;
   --mw-gold: #e8b34b;
   --mw-gold-soft: rgba(232, 179, 75, 0.14);
   --mw-text: #f4f1ea;

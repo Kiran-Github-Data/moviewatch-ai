@@ -1,6 +1,7 @@
 import type { WatchStatus } from "@moviewatch/contracts";
 
-/** Mirrors the API contract for POST /watches preferences. */
+/** Mirrors the API contract for POST /watches preference (Milestone 4). */
+/** Per-dimension ranked preferences: rank 1 = first choice, rank 2 = backup. */
 export interface SeatRulesInput {
   zone: string;
   rows: string;
@@ -11,16 +12,27 @@ export interface SeatRulesInput {
 }
 
 export interface PreferenceInput {
-  rank: number;
-  theaterIds: string[];
-  daysOfWeek: number[];
+  theatersRank1: string[];
+  theatersRank2: string[];
+  daysRank1: number[];
+  daysRank2: number[];
   dateFrom: null;
   dateTo: null;
-  timeWindows: string[];
-  formats: string[];
+  timeWindowsRank1: string[];
+  timeWindowsRank2: string[];
+  formatsRank1: string[];
+  formatsRank2: string[];
   ticketCount: number;
   maxTicketPriceCents: number;
   seatRules: SeatRulesInput;
+}
+
+export interface TheaterT {
+  id: string;
+  name: string;
+  address: string | null;
+  city: string | null;
+  distanceKm: number | null;
 }
 
 export interface PolicyTerms {
@@ -47,7 +59,7 @@ export interface WatchT {
   expiresAt: string;
   cadenceMinutes: number;
   policyVersion: number;
-  preferences: PreferenceInput[];
+  preference: PreferenceInput | null;
   policy: null | { hash: string; terms: PolicyTerms; consent: unknown };
   createdAt: string;
   updatedAt: string;
@@ -75,15 +87,18 @@ export function defaultSeatRules(): SeatRulesInput {
   };
 }
 
-export function defaultPreference(rank: number): PreferenceInput {
+export function defaultPreference(): PreferenceInput {
   return {
-    rank,
-    theaterIds: [],
-    daysOfWeek: [],
+    theatersRank1: [],
+    theatersRank2: [],
+    daysRank1: [],
+    daysRank2: [],
     dateFrom: null,
     dateTo: null,
-    timeWindows: ["evening"],
-    formats: [],
+    timeWindowsRank1: ["evening"],
+    timeWindowsRank2: [],
+    formatsRank1: [],
+    formatsRank2: [],
     ticketCount: 2,
     maxTicketPriceCents: 2000,
     seatRules: defaultSeatRules(),

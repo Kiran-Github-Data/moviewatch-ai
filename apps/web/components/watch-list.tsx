@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { Button, EmptyState, StatusBadge } from "@moviewatch/ui";
 import { apiFetchWithAuth } from "@/lib/api";
 import { useFreshToken } from "@/lib/use-fresh-token";
@@ -10,24 +11,142 @@ import {
   formatDateShort,
   formatMoney,
   friendlyWatchError,
+  type PreferenceInput,
   type WatchT,
 } from "@/lib/watches";
+import {
+  CalendarIcon,
+  MapPinIcon,
+  PlusIcon,
+} from "@/components/icons";
+import { GlassCard, RankBadge, SkeletonCard } from "@/components/ui-kit";
 
 const TERMINAL = new Set(["BOOKED", "CANCELLED", "FAILED", "EXPIRED"]);
 const DISARMABLE = new Set(["ARMED", "MONITORING", "WAITING_FOR_RELEASE"]);
 
-function preferenceLine(w: WatchT): string {
-  const p = w.preferences[0];
-  if (!p) return "No preferences";
-  const days = p.daysOfWeek.length ? p.daysOfWeek.map((d) => DAY_LABELS[d]).join(", ") : "any day";
-  const bits = [
-    `${p.ticketCount} ticket${p.ticketCount === 1 ? "" : "s"}`,
-    p.formats.join("/") || "any format",
-    days,
-    `up to ${formatMoney(p.maxTicketPriceCents)} each`,
-  ];
-  if (w.preferences.length > 1) bits.push(`+${w.preferences.length - 1} backup`);
-  return bits.join(" · ");
+const WINDOW_LABELS: Record<string, string> = {
+  morning: "Morning",
+  afternoon: "Afternoon",
+  evening: "Evening",
+  "late-night": "Late night",
+};
+
+function DimBadge({ label, rank1, rank2 }: { label: string; rank1: string; rank2?: string }) {
+  return (
+    <div className="flex items-start gap-2 text-xs">
+      <span className="w-16 shrink-0 pt-0.5 font-semibold uppercase tracking-wider text-white/35">
+        {label}
+      </span>
+      <div className="min-w-0">
+        <p className="truncate font-medium text-white/90">{rank1}</p>
+        {rank2 && <p className="truncate text-white/50">{rank2}</p>}
+      </div>
+    </div>
+  );
+}
+
+function PreferenceSummary({ p }: { p: PreferenceInput }) {
+  const days1 = p.daysRank1.map((d) => DAY_LABELS[d]).join(", ") || "Any day";
+  const days2 = p.daysRank2.map((d) => DAY_LABELS[d]).join(", ");
+  const win1 = p.timeWindowsRank1.map((w) => WINDOW_LABELS[w] ?? w).join(" · ") || "Any time";
+  const win2 = p.timeWindowsRank2.map((w) => WINDOW_LABELS[w] ?? w).join(" · ");
+  const fmt1 = p.formatsRank1.join(" · ") || "Any format";
+  const fmt2 = p.formatsRank2.join(" · ");
+  return (
+    <div className="mt-4 space-y-2.5 border-t border-white/[0.06] pt-4">
+      <DimBadge label="Theaters" rank1={`${p.theatersRank1.length} first choice`} rank2={p.theatersRank2.length ? `${p.theatersRank2.length} backup` : undefined} />
+      <DimBadge label="Showtime" rank1={win1} rank2={win2 || undefined} />
+      <DimBadge label="Format" rank1={fmt1} rank2={fmt2 || undefined} />
+      <DimBadge label="Days" rank1={days1} rank2={days2 || undefined} />
+      <DimBadge
+        label="Party"
+        rank1={`${p.ticketCount} ticket${p.ticketCount === 1 ? "" : "s"} · up to ${formatMoney(p.maxTicketPriceCents)} each`}
+      />
+    </div>
+  );
+}
+
+function WatchCard({
+  watch,
+  acting,
+  onAct,
+  index,
+}: {
+  watch: WatchT;
+  acting: string | null;
+  onAct: (id: string, action: "disarm" | "cancel") => void;
+  index: number;
+}) {
+  const terminal = TERMINAL.has(watch.status);
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.35, delay: Math.min(index * 0.06, 0.3) }}
+    >
+      <GlassCard className="group p-6 transition-colors duration-200 hover:border-white/[0.16]">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-3">
+              <h3 className="text-xl font-bold tracking-tight">{watch.movieTitle}</h3>
+              <StatusBadge status={watch.status} />
+            </div>
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/50">
+              <span className="inline-flex items-center gap-1">
+                <MapPinIcon className="h-3.5 w-3.5" /> {watch.zip}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <CalendarIcon className="h-3.5 w-3.5" /> Expires {formatDateShort(watch.expiresAt)}
+              </span>
+            </p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            {DISARMABLE.has(watch.status) && (
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={acting === `disarm:${watch.id}`}
+                onClick={() => onAct(watch.id, "disarm")}
+              >
+                {acting === `disarm:${watch.id}` ? "Disarming…" : "Disarm"}
+              </Button>
+            )}
+            {!terminal && (
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={acting === `cancel:${watch.id}`}
+                onClick={() => onAct(watch.id, "cancel")}
+              >
+                {acting === `cancel:${watch.id}` ? "Cancelling…" : "Cancel"}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {watch.preference ? (
+          <PreferenceSummary p={watch.preference} />
+        ) : (
+          <p className="mt-4 text-sm text-white/40">No preferences saved.</p>
+        )}
+
+        <div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-4">
+          <div className="flex items-center gap-2 text-xs text-white/40">
+            <RankBadge rank={1} />
+            <span>tried before</span>
+            <RankBadge rank={2} />
+            <span>backup</span>
+          </div>
+          <Link
+            href={`/watches/new?tmdbId=${watch.tmdbId}&title=${encodeURIComponent(watch.movieTitle)}`}
+            className="inline-flex items-center gap-1 text-xs font-medium text-gold/80 transition-colors hover:text-gold"
+          >
+            <PlusIcon className="h-3.5 w-3.5" /> New watch, same movie
+          </Link>
+        </div>
+      </GlassCard>
+    </motion.div>
+  );
 }
 
 export function WatchList() {
@@ -65,13 +184,18 @@ export function WatchList() {
   };
 
   if (watches === null) {
-    return <p className="text-muted">Loading your watches…</p>;
+    return (
+      <div className="space-y-4">
+        <SkeletonCard lines={3} />
+        <SkeletonCard lines={3} />
+      </div>
+    );
   }
 
   return (
     <div>
       {error && (
-        <p className="mb-4 rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-sm text-red-300">
+        <p className="mb-4 rounded-2xl border border-red-400/30 bg-red-400/10 px-5 py-3.5 text-sm text-red-300">
           {error}
         </p>
       )}
@@ -87,54 +211,17 @@ export function WatchList() {
           }
         />
       ) : (
-        <div className="space-y-4">
-          {watches.map((w) => (
-            <div
-              key={w.id}
-              className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-surface p-5 sm:flex-row sm:items-center sm:justify-between"
-            >
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h3 className="truncate text-lg font-semibold">{w.movieTitle}</h3>
-                  <StatusBadge status={w.status} />
-                </div>
-                <p className="mt-1 text-sm text-muted">{preferenceLine(w)}</p>
-                <p className="mt-1 text-xs text-muted">
-                  {w.zip} · expires {formatDateShort(w.expiresAt)}
-                </p>
-              </div>
-              <div className="flex shrink-0 gap-2">
-                {DISARMABLE.has(w.status) && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    disabled={acting === `disarm:${w.id}`}
-                    onClick={() => act(w.id, "disarm")}
-                  >
-                    {acting === `disarm:${w.id}` ? "Disarming…" : "Disarm"}
-                  </Button>
-                )}
-                {!TERMINAL.has(w.status) && (
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    disabled={acting === `cancel:${w.id}`}
-                    onClick={() => act(w.id, "cancel")}
-                  >
-                    {acting === `cancel:${w.id}` ? "Cancelling…" : "Cancel"}
-                  </Button>
-                )}
-                <Link href={`/watches/new?tmdbId=${w.tmdbId}&title=${encodeURIComponent(w.movieTitle)}`}>
-                  <Button size="sm" variant="ghost">
-                    New watch
-                  </Button>
-                </Link>
-              </div>
-            </div>
+        <div className="space-y-5">
+          {watches.map((w, i) => (
+            <WatchCard key={w.id} watch={w} acting={acting} onAct={act} index={i} />
           ))}
           <div className="pt-2">
             <Link href="/movies">
-              <Button variant="ghost">+ Watch another movie</Button>
+              <Button variant="ghost">
+                <span className="flex items-center gap-2">
+                  <PlusIcon className="h-4 w-4" /> Watch another movie
+                </span>
+              </Button>
             </Link>
           </div>
         </div>

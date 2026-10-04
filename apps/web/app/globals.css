@@ -7,11 +7,37 @@ body {
   background: var(--mw-bg);
   color: var(--mw-text);
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
-/* Cinematic vignette backdrop for the hero/dashboard */
+/* Richer cinematic base — deep black with warm gold + cool blue ambience */
 .cinema-glow {
   background:
-    radial-gradient(60% 45% at 50% 0%, rgba(232, 179, 75, 0.12), transparent 70%),
-    radial-gradient(40% 30% at 85% 20%, rgba(96, 165, 250, 0.08), transparent 70%);
+    radial-gradient(60% 45% at 50% 0%, rgba(232, 179, 75, 0.1), transparent 70%),
+    radial-gradient(40% 30% at 85% 20%, rgba(96, 165, 250, 0.06), transparent 70%);
+}
+
+/* Refined scrollbar for the dark theme */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+  background-clip: content-box;
+  border: 2px solid transparent;
+}
+
+/* Native inputs inherit the dark scheme */
+input, select, textarea {
+  color-scheme: dark;
 }
