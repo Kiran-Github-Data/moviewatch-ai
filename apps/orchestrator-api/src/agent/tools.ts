@@ -18,8 +18,7 @@ import { tool } from "langchain";
 import { z } from "zod";
 import type { PrismaClient } from "@moviewatch/database";
 import {
-  EnvTicketProvider,
-  MockTicketProvider,
+  selectTicketProvider,
   type TicketOffer,
   type TicketProvider,
   type WatchForCheck,
@@ -47,8 +46,8 @@ export interface AgentDeps {
   };
 }
 
-function defaultProvider(): TicketProvider {
-  return process.env.MOCK_TICKETS_JSON ? new EnvTicketProvider() : new MockTicketProvider();
+function defaultProvider(db?: PrismaClient): TicketProvider {
+  return selectTicketProvider(db);
 }
 
 function webOrigin(): string {
@@ -110,7 +109,7 @@ const purchaseTicketsSchema = z.object({
 
 /** Deterministic: fetch current offers for a watch. No LLM judgment. */
 export function checkShowtimes(deps: AgentDeps) {
-  const provider = deps.provider ?? defaultProvider();
+  const provider = deps.provider ?? defaultProvider(deps.db);
   return tool(
     async ({ watchId }: z.infer<typeof checkShowtimesSchema>): Promise<string> => {
       const watch = await loadWatchForAgent(deps.db, watchId);
@@ -207,6 +206,18 @@ export async function evaluatePurchaseGuards(
     return { allowed: false, reason: `offer "${offerId}" not found in current offers. Purchase refused.` };
   }
 
+  // GATE 2b: the provider must report a real price. Feeds without pricing
+  // (e.g. SerpApi) report 0 — never auto-charge an unknown price.
+  if (offer.pricePerTicketCents <= 0) {
+    return {
+      allowed: false,
+      reason: "offer price unknown (provider reports no pricing). Purchase refused — notify the user instead.",
+      watch,
+      offer,
+      totalCents: 0,
+    };
+  }
+
   const totalCents = offer.pricePerTicketCents * watch.ticketCount;
 
   // GATE 3: spending cap. The policy engine can only lower this, never raise.
@@ -243,7 +254,7 @@ export async function evaluatePurchaseGuards(
  * job is picking which offer matches the user's fuzzy preferences.
  */
 export function purchaseTickets(deps: AgentDeps) {
-  const provider = deps.provider ?? defaultProvider();
+  const provider = deps.provider ?? defaultProvider(deps.db);
   return tool(
     async ({ watchId, offerId }: z.infer<typeof purchaseTicketsSchema>): Promise<string> => {
       const guards = await evaluatePurchaseGuards(deps.db, provider, watchId, offerId);
