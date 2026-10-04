@@ -1,0 +1,17 @@
+@import "@moviewatch/ui/globals.css";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background: var(--mw-bg);
+  color: var(--mw-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Cinematic vignette backdrop for the hero/dashboard */
+.cinema-glow {
+  background:
+    radial-gradient(60% 45% at 50% 0%, rgba(232, 179, 75, 0.12), transparent 70%),
+    radial-gradient(40% 30% at 85% 20%, rgba(96, 165, 250, 0.08), transparent 70%);
+}
