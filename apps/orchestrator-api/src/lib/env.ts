@@ -24,6 +24,9 @@ const EnvSchema = z.object({
   // until configured. Never log these values (see logger redaction).
   STRIPE_SECRET_KEY: z.string().min(1).optional(),
   STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+  // SerpApi (interim ticket feed). Optional at boot — the monitor falls back
+  // to the mock provider (no offers) until configured. Never log this value.
+  SERPAPI_API_KEY: z.string().min(1).optional(),
   // LangGraph deep agent (Milestone 6). Optional at boot — the agent
   // scheduler logs a warning and idles when unset. Never log this value.
   GROQ_API_KEY: z.string().min(1).optional(),

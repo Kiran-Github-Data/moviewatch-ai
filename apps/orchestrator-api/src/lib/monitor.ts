@@ -2,6 +2,7 @@ import type { PrismaClient } from "@moviewatch/database";
 import { canTransition, type WatchStatus } from "@moviewatch/contracts";
 import { requireStripe, StripeNotConfiguredError } from "./stripe.js";
 import { writeAudit } from "./audit.js";
+import { SerpApiTicketProvider } from "./serpapi-provider.js";
 import {
   sendEmail,
   ticketsAvailableEmail,
@@ -31,8 +32,11 @@ export interface TicketOffer {
   theaterName: string;
   /** Human display, e.g. "Fri, Dec 18 · 7:30 PM". */
   showtime: string;
+  /** Price per ticket in cents. 0 = "price unknown" (provider has no pricing). */
   pricePerTicketCents: number;
   bookingUrl: string;
+  /** Seats remaining, when the provider reports it. */
+  availableInventory?: number;
 }
 
 export interface WatchForCheck {
@@ -89,6 +93,45 @@ export class EnvTicketProvider implements TicketProvider {
       return [];
     }
   }
+}
+
+/**
+ * Resolve watch theater IDs (our directory) to display names for providers
+ * that match on names (e.g. SerpApi). Best-effort: missing rows resolve to
+ * the raw ID, which still matches when IDs are human-readable.
+ */
+export async function resolveTheaterNames(
+  db: PrismaClient,
+  ids: string[],
+): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  if (ids.length === 0) return map;
+  try {
+    const rows = await db.theater.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, name: true },
+    });
+    for (const r of rows) map.set(r.id, r.name);
+  } catch {
+    // Best-effort: fall through with an empty map.
+  }
+  return map;
+}
+
+/**
+ * Provider selection (single authority):
+ *  1. MOCK_TICKETS_JSON set → EnvTicketProvider (demos/tests).
+ *  2. SERPAPI_API_KEY set → SerpApiTicketProvider (interim real feed).
+ *  3. otherwise → MockTicketProvider (safe: no tickets, ever).
+ */
+export function selectTicketProvider(db?: PrismaClient): TicketProvider {
+  if (process.env.MOCK_TICKETS_JSON) return new EnvTicketProvider();
+  if (process.env.SERPAPI_API_KEY) {
+    return new SerpApiTicketProvider({
+      resolveTheaterNames: db ? (ids) => resolveTheaterNames(db, ids) : undefined,
+    });
+  }
+  return new MockTicketProvider();
 }
 
 /** Minimal Stripe surface the monitor needs (injectable for tests). */
@@ -199,7 +242,7 @@ export async function checkWatchAvailability(
 ): Promise<CheckResult> {
   const db = deps.db;
   const now = deps.now ?? new Date();
-  const provider = deps.provider ?? new MockTicketProvider();
+  const provider = deps.provider ?? selectTicketProvider(db);
 
   const watch = await loadWatchForCheck(db, watchId);
   if (!watch) return { outcome: "skipped", reason: "watch not found" };
@@ -230,7 +273,12 @@ export async function checkWatchAvailability(
     watch.defaultPaymentMethodId !== null &&
     watch.stripeCustomerId !== null;
 
-  if (!canAutoBook) {
+  // Providers without pricing (e.g. SerpApi) report pricePerTicketCents = 0
+  // ("price unknown"). Never auto-charge an unknown price — fall back to the
+  // notify path so the user sees real prices via the booking link.
+  const priceKnown = best.pricePerTicketCents > 0;
+
+  if (!canAutoBook || !priceKnown) {
     // User chose "notify" mode, or auto-book prerequisites aren't met:
     // send an email alert with booking link.
     await transition(db, watch.id, status, "TICKETS_DETECTED", "monitor.tickets_detected", "monitor");
