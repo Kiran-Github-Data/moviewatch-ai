@@ -56,44 +56,44 @@ const ZIPPOPOTAM_OK = {
   ],
 };
 
-const OVERPASS_OK = {
-  elements: [
-    {
-      type: "node",
-      id: 1,
-      lat: 33.24,
-      lon: -96.78,
-      tags: {
-        amenity: "cinema",
-        name: "Cinemark Prosper",
-        "addr:housenumber": "1300",
-        "addr:street": "W Frontier Pkwy",
-        "addr:city": "Prosper",
-      },
+const NOMINATIM_OK = [
+  {
+    osm_type: "node",
+    osm_id: 1,
+    lat: "33.24",
+    lon: "-96.78",
+    name: "Cinemark Prosper",
+    address: {
+      house_number: "1300",
+      road: "W Frontier Pkwy",
+      city: "Prosper",
     },
-    {
-      type: "way",
-      id: 2,
-      center: { lat: 33.2, lon: -96.82 },
-      tags: { amenity: "cinema", name: "AMC Frisco", "addr:city": "Frisco" },
-    },
-    // Duplicate of the first (same name + coords) — must be deduped.
-    {
-      type: "node",
-      id: 3,
-      lat: 33.24,
-      lon: -96.78,
-      tags: { amenity: "cinema", name: "Cinemark Prosper", "addr:street": "W Frontier Pkwy" },
-    },
-    // Unnamed — must be skipped.
-    { type: "node", id: 4, lat: 33.25, lon: -96.79, tags: { amenity: "cinema" } },
-  ],
-};
+  },
+  {
+    osm_type: "way",
+    osm_id: 2,
+    lat: "33.2",
+    lon: "-96.82",
+    name: "AMC Frisco",
+    address: { city: "Frisco" },
+  },
+  // Duplicate of the first (same name + coords) — must be deduped.
+  {
+    osm_type: "node",
+    osm_id: 3,
+    lat: "33.24",
+    lon: "-96.78",
+    name: "Cinemark Prosper",
+    address: { road: "W Frontier Pkwy" },
+  },
+  // Unnamed — must be skipped.
+  { osm_type: "node", osm_id: 4, lat: "33.25", lon: "-96.79" },
+];
 
 function stubHappyPath(): void {
   stubFetch((url) => {
     if (url.startsWith("https://api.zippopotam.us/")) return jsonResponse(ZIPPOPOTAM_OK);
-    if (url.startsWith("https://overpass-api.de/")) return jsonResponse(OVERPASS_OK);
+    if (url.startsWith("https://nominatim.openstreetmap.org/")) return jsonResponse(NOMINATIM_OK);
     throw new Error(`unexpected fetch: ${url}`);
   });
 }
@@ -151,7 +151,7 @@ describe("geocodeZip", () => {
 
 describe("fetchCinemas", () => {
   it("parses nodes and ways, skips unnamed, builds provider ids", async () => {
-    stubFetch(() => jsonResponse(OVERPASS_OK));
+    stubFetch(() => jsonResponse(NOMINATIM_OK));
     const cinemas = await fetchCinemas(33.2362, -96.7785);
     assert.equal(cinemas.length, 3); // dedupe happens separately
     const byId = new Map(cinemas.map((c) => [c.providerId, c]));
@@ -261,7 +261,7 @@ describe("theaters route", () => {
     assert.equal(res.statusCode, 502);
   });
 
-  it("502s when Overpass fails", async () => {
+  it("502s when Nominatim fails", async () => {
     stubFetch((url) => {
       if (url.startsWith("https://api.zippopotam.us/")) return jsonResponse(ZIPPOPOTAM_OK);
       return new Response("overloaded", { status: 504 });

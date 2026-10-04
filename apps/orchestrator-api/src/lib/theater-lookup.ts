@@ -2,9 +2,12 @@ import { z } from "zod";
 
 /**
  * Theater lookup plumbing: US ZIP → geocode (Zippopotam.us, free, no key) →
- * cinemas (OpenStreetMap Overpass API). HTTP is injectable so tests never hit
- * real APIs. Pure helpers (dedupe, distance, cache freshness) are exported
- * for unit testing.
+ * cinemas (OpenStreetMap Nominatim search API). Overpass was replaced because
+ * it blocks datacenter/cloud IPs (Fly.io, CI runners) with connection
+ * timeouts; Nominatim search with a viewbox is reachable and returns the same
+ * OSM amenity=cinema data. HTTP is injectable so tests never hit real APIs.
+ * Pure helpers (dedupe, distance, cache freshness) are exported for unit
+ * testing.
  */
 
 /** ZIP must be exactly 5 digits. Anything else is a 400. */
@@ -20,7 +23,7 @@ export class ZipNotFoundError extends Error {
   }
 }
 
-/** Thrown when an upstream provider (Zippopotam / Overpass) fails. Maps to 502. */
+/** Thrown when an upstream provider (Zippopotam / Nominatim) fails. Maps to 502. */
 export class UpstreamError extends Error {
   readonly provider: string;
   constructor(provider: string, message: string) {
@@ -37,9 +40,9 @@ export interface ZipGeo {
   city: string;
 }
 
-/** A cinema as returned by the Overpass API, before persistence. */
+/** A cinema as returned by the Nominatim API, before persistence. */
 export interface RawCinema {
-  /** e.g. "osm:node/123456" — matches Theater.providerTheaterId. */
+  /** e.g. "osm:way/739855750" — matches Theater.providerTheaterId. */
   providerId: string;
   name: string;
   address: string;
@@ -48,7 +51,7 @@ export interface RawCinema {
   lon: number;
 }
 
-/** Cached theater rows are considered fresh for 30 days (avoids hammering Overpass). */
+/** Cached theater rows are considered fresh for 30 days (avoids hammering Nominatim). */
 export const THEATER_CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 export function isCacheFresh(updatedAt: Date, now: Date = new Date()): boolean {
@@ -58,9 +61,13 @@ export function isCacheFresh(updatedAt: Date, now: Date = new Date()): boolean {
 type FetchFn = typeof fetch;
 
 const ZIPPOPOTAM_URL = "https://api.zippopotam.us/us";
-const OVERPASS_URL = "https://overpass-api.de/api/interpreter";
-const OVERPASS_RADIUS_M = 25000;
-const OVERPASS_TIMEOUT_S = 15;
+const NOMINATIM_URL = "https://nominatim.openstreetmap.org/search";
+/** ~25km viewbox half-extents in degrees (lon wider at US latitudes). */
+const VIEWBOX_LAT_DEG = 0.25;
+const VIEWBOX_LON_DEG = 0.3;
+const NOMINATIM_TIMEOUT_S = 15;
+/** Nominatim usage policy requires an identifying User-Agent. */
+const NOMINATIM_USER_AGENT = "MovieWatchAI/1.0 (theater lookup)";
 
 /**
  * Geocode a US ZIP via Zippopotam.us. Throws ZipNotFoundError on 404,
@@ -102,94 +109,106 @@ function parseZippopotamPlace(body: unknown): { lat: number; lon: number; city: 
   return { lat, lon, city };
 }
 
-interface OverpassElement {
-  type: string;
-  id: number;
-  lat?: number;
-  lon?: number;
-  center?: { lat: number; lon: number };
-  tags?: Record<string, string>;
+interface NominatimAddress {
+  house_number?: string;
+  road?: string;
+  city?: string;
+  town?: string;
+  village?: string;
+  suburb?: string;
+}
+
+interface NominatimResult {
+  osm_type?: string;
+  osm_id?: number;
+  lat?: string;
+  lon?: string;
+  name?: string;
+  address?: NominatimAddress;
 }
 
 /**
- * Query OSM Overpass for amenity=cinema within ~25km of a point.
- * Throws UpstreamError on timeout / HTTP error / network failure.
+ * Query OSM Nominatim for cinemas within ~25km of a point, via a bounded
+ * viewbox search for "cinema". Throws UpstreamError on timeout / HTTP error /
+ * network failure.
  */
 export async function fetchCinemas(
   lat: number,
   lon: number,
   fetchFn: FetchFn = fetch,
 ): Promise<RawCinema[]> {
-  const query =
-    `[out:json][timeout:${OVERPASS_TIMEOUT_S}];` +
-    `(node["amenity"="cinema"](around:${OVERPASS_RADIUS_M},${lat},${lon});` +
-    `way["amenity"="cinema"](around:${OVERPASS_RADIUS_M},${lat},${lon}););` +
-    `out center 20;`;
+  const left = lon - VIEWBOX_LON_DEG;
+  const top = lat + VIEWBOX_LAT_DEG;
+  const right = lon + VIEWBOX_LON_DEG;
+  const bottom = lat - VIEWBOX_LAT_DEG;
+  const params = new URLSearchParams({
+    format: "json",
+    q: "cinema",
+    viewbox: `${left},${top},${right},${bottom}`,
+    bounded: "1",
+    limit: "20",
+    addressdetails: "1",
+  });
 
   let res: Response;
   try {
-    res = await fetchFn(OVERPASS_URL, {
-      method: "POST",
-      headers: { "content-type": "application/x-www-form-urlencoded" },
-      body: `data=${encodeURIComponent(query)}`,
-      signal: AbortSignal.timeout((OVERPASS_TIMEOUT_S + 10) * 1000),
+    res = await fetchFn(`${NOMINATIM_URL}?${params.toString()}`, {
+      headers: { "User-Agent": NOMINATIM_USER_AGENT },
+      signal: AbortSignal.timeout(NOMINATIM_TIMEOUT_S * 1000),
     });
   } catch (err) {
-    throw new UpstreamError("overpass", err instanceof Error ? err.message : String(err));
+    throw new UpstreamError("nominatim", err instanceof Error ? err.message : String(err));
   }
-  if (!res.ok) throw new UpstreamError("overpass", `HTTP ${res.status}`);
+  if (!res.ok) throw new UpstreamError("nominatim", `HTTP ${res.status}`);
 
   let body: unknown;
   try {
     body = (await res.json()) as unknown;
   } catch {
-    throw new UpstreamError("overpass", "invalid JSON response");
+    throw new UpstreamError("nominatim", "invalid JSON response");
   }
-  return parseOverpassElements(body);
+  return parseNominatimResults(body);
 }
 
-function parseOverpassElements(body: unknown): RawCinema[] {
-  if (typeof body !== "object" || body === null) return [];
-  const elements = (body as Record<string, unknown>).elements;
-  if (!Array.isArray(elements)) return [];
+function parseNominatimResults(body: unknown): RawCinema[] {
+  if (!Array.isArray(body)) return [];
 
   const out: RawCinema[] = [];
-  for (const el of elements as OverpassElement[]) {
-    if (!el || typeof el !== "object") continue;
-    const tags = el.tags ?? {};
-    const name = typeof tags.name === "string" ? tags.name.trim() : "";
-    if (!name) continue; // unnamed cinemas are not useful for selection
+  for (const item of body as NominatimResult[]) {
+    if (!item || typeof item !== "object") continue;
+    const name = typeof item.name === "string" ? item.name.trim() : "";
+    if (!name) continue; // unnamed results are not useful for selection
 
-    const coords =
-      typeof el.lat === "number" && typeof el.lon === "number"
-        ? { lat: el.lat, lon: el.lon }
-        : el.center && typeof el.center.lat === "number" && typeof el.center.lon === "number"
-          ? { lat: el.center.lat, lon: el.center.lon }
-          : null;
-    if (!coords) continue;
+    const lat = Number(item.lat);
+    const lon = Number(item.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
 
-    const type = el.type === "way" ? "way" : "node";
+    const osmType = item.osm_type === "way" || item.osm_type === "relation" ? item.osm_type : "node";
+    const osmId = typeof item.osm_id === "number" ? item.osm_id : 0;
+    const address = item.address ?? {};
+
     out.push({
-      providerId: `osm:${type}/${el.id}`,
+      providerId: `osm:${osmType}/${osmId}`,
       name,
-      address: formatAddress(tags),
-      city: tags["addr:city"] ?? tags["addr:suburb"] ?? "",
-      lat: coords.lat,
-      lon: coords.lon,
+      address: formatNominatimAddress(address),
+      city:
+        address.city ?? address.town ?? address.village ?? address.suburb ?? "",
+      lat,
+      lon,
     });
   }
   return out;
 }
 
-function formatAddress(tags: Record<string, string>): string {
-  const num = tags["addr:housenumber"];
-  const street = tags["addr:street"];
+function formatNominatimAddress(address: NominatimAddress): string {
+  const num = address.house_number;
+  const street = address.road;
   return [num, street].filter((s): s is string => !!s).join(" ");
 }
 
 /**
- * Deduplicate cinemas by normalized name + rounded coordinates. Overpass can
- * return the same venue as both a node and a way (or twice across queries).
+ * Deduplicate cinemas by normalized name + rounded coordinates. Nominatim can
+ * return the same venue twice across viewbox edges.
  */
 export function dedupeCinemas(cinemas: RawCinema[]): RawCinema[] {
   const seen = new Set<string>();
