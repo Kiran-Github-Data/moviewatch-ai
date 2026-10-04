@@ -21,7 +21,7 @@ import {
   type AgentDeps,
 } from "./tools.js";
 
-const AGENT_MODEL = process.env.AGENT_MODEL ?? "anthropic:claude-haiku-4-5";
+const AGENT_MODEL = process.env.AGENT_MODEL ?? "groq:llama-3.3-70b-versatile";
 
 const SYSTEM_PROMPT = `You are MovieWatch's ticket agent. You monitor one movie watch per run.
 

@@ -10,7 +10,7 @@
  *  - Resilience: each watch is wrapped in try/catch — one bad watch never
  *    kills the batch.
  *
- * The scheduler is disabled (with a warning) when ANTHROPIC_API_KEY is unset.
+ * The scheduler is disabled (with a warning) when GROQ_API_KEY is unset.
  * Run: `node dist/agent/scheduler.js` (see fly.toml [processes] agent_worker).
  */
 import cron from "node-cron";
@@ -31,7 +31,7 @@ import { loadWatchForAgent } from "./tools.js";
 const CRON_SCHEDULE = process.env.AGENT_CRON ?? "*/15 * * * *";
 
 function agentEnabled(): boolean {
-  return Boolean(process.env.ANTHROPIC_API_KEY);
+  return Boolean(process.env.GROQ_API_KEY);
 }
 
 function provider(): TicketProvider {
@@ -112,7 +112,7 @@ export async function runAgentCycle(deps?: Partial<WatchAgentDeps>): Promise<Cyc
 async function main(): Promise<void> {
   if (!agentEnabled()) {
     console.warn(
-      "[agent-scheduler] ANTHROPIC_API_KEY is not set — deep agent disabled. " +
+      "[agent-scheduler] GROQ_API_KEY is not set — deep agent disabled. " +
         "Set it to enable LLM-powered ticket monitoring.",
     );
     // Keep the process alive but idle so Fly doesn't restart-loop; the
