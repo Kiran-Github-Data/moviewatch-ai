@@ -1,0 +1,1 @@
+{"compilerOptions":{"declaration":true,"declarationMap":true,"lib":["ES2023"],"module":"NodeNext","moduleResolution":"NodeNext","noEmit":false,"outDir":"dist","rootDir":"src","sourceMap":true,"target":"ES2022"},"exclude":["node_modules","dist"],"extends":"@moviewatch/config/tsconfig.base.json","include":["src"]}
