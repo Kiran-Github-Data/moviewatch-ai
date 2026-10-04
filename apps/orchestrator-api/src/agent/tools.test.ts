@@ -184,6 +184,19 @@ describe("evaluatePurchaseGuards", () => {
     assert.match(g.reason ?? "", /not found in current offers/);
   });
 
+  it("refuses when the offer price is unknown (provider reports no pricing)", async () => {
+    const { db } = makeDb(makeWatch());
+    const unknownPriceOffer = { ...OFFER, pricePerTicketCents: 0 };
+    const g = await evaluatePurchaseGuards(
+      db as never,
+      new FixedProvider([unknownPriceOffer]),
+      "w1",
+      "t1",
+    );
+    assert.equal(g.allowed, false);
+    assert.match(g.reason ?? "", /price unknown/);
+  });
+
   it("allows when all gates pass", async () => {
     const { db } = makeDb(makeWatch());
     const g = await evaluatePurchaseGuards(
