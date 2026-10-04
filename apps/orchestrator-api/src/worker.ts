@@ -13,7 +13,7 @@
  */
 import "dotenv/config";
 import { getPrisma } from "@moviewatch/database";
-import { runMonitorCycle, EnvTicketProvider } from "./lib/monitor.js";
+import { runMonitorCycle, selectTicketProvider } from "./lib/monitor.js";
 
 const INTERVAL_MS = 15 * 60 * 1000;
 
@@ -21,7 +21,7 @@ async function cycle(): Promise<void> {
   const started = Date.now();
   try {
     const db = getPrisma();
-    const summary = await runMonitorCycle({ db, provider: new EnvTicketProvider() });
+    const summary = await runMonitorCycle({ db, provider: selectTicketProvider(db) });
     console.log(
       JSON.stringify({ at: new Date().toISOString(), event: "monitor.cycle", summary, ms: Date.now() - started }),
     );
