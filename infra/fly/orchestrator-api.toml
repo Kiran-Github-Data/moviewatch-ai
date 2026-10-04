@@ -1,0 +1,23 @@
+app = "moviewatch-orchestrator-api"
+primary_region = "dfw"
+
+[build]
+
+[http_service]
+  internal_port = 4000
+  force_https = true
+  auto_stop_machines = "suspend"
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  path = "/api/v1/health"
+  timeout = "5s"
+
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
