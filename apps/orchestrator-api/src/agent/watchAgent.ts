@@ -20,6 +20,7 @@ import {
   loadWatchForAgent,
   type AgentDeps,
 } from "./tools.js";
+import { browseTheaterSite, checkAvailability } from "./browser-tools.js";
 
 const AGENT_MODEL = process.env.AGENT_MODEL ?? "groq:llama-3.3-70b-versatile";
 
@@ -43,6 +44,13 @@ For the given watch:
      Spending caps and consent are enforced by the tool itself — if it returns
      REFUSED, report the refusal reason and stop. Then reply "booked" or
      "refused: <reason>".
+5. If API data is insufficient (check_showtimes returns no usable offers), you
+   may use browse_theater_site to check theater websites directly, and
+   check_availability for a deeper read of a specific showtime page. Only
+   browse theater sites for this watch's configured theaters. If a tool
+   returns BLOCKED (CAPTCHA, login wall, bot protection), stop trying that
+   site — never attempt to bypass it. Never purchase through the browser;
+   purchasing happens ONLY via purchase_tickets.
 
 Rules you must never break:
 - Never invent offers. Only use offers returned by check_showtimes.
@@ -85,7 +93,13 @@ export async function createWatchAgent(deps: WatchAgentDeps): Promise<DeepAgent>
   return createDeepAgent({
     model: AGENT_MODEL,
     systemPrompt: SYSTEM_PROMPT,
-    tools: [checkShowtimes(deps), sendEmailAlert(deps), purchaseTickets(deps)],
+    tools: [
+      checkShowtimes(deps),
+      sendEmailAlert(deps),
+      purchaseTickets(deps),
+      browseTheaterSite({ db: deps.db }),
+      checkAvailability({ db: deps.db }),
+    ],
     checkpointer,
     name: "moviewatch-ticket-agent",
   });
