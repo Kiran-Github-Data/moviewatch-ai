@@ -20,16 +20,17 @@ primary_region = "dfw"
     soft_limit = 20
 
 [[http_service.checks]]
-  grace_period = "10s"
+  grace_period = "30s"
   interval = "30s"
   method = "GET"
-  path = "/health"
+  path = "/api/v1/health"
   protocol = "http"
-  timeout = "5s"
+  timeout = "10s"
 
-# Runs prisma migrate deploy before each release (no-ops when already applied).
-[deploy]
-  release_command = "pnpm --filter @moviewatch/database exec prisma migrate deploy"
+# Release command removed: Fly's network can't reach Neon (P1001).
+# Migrations are applied manually from an environment with Neon access.
+# [deploy]
+#   release_command = "pnpm --filter @moviewatch/database exec prisma migrate deploy"
 
 # Monitoring worker (Milestone 5): checks ARMED watches every 15 min and
 # auto-books when authorized. Runs as a separate machine without public ports.
