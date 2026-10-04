@@ -15,10 +15,10 @@
  */
 import cron from "node-cron";
 import { getPrisma } from "@moviewatch/database";
+import type { PrismaClient } from "@moviewatch/database";
 import { writeAudit } from "../lib/audit.js";
 import {
-  EnvTicketProvider,
-  MockTicketProvider,
+  selectTicketProvider,
   type TicketProvider,
 } from "../lib/monitor.js";
 import {
@@ -34,12 +34,42 @@ function agentEnabled(): boolean {
   return Boolean(process.env.GROQ_API_KEY);
 }
 
-function provider(): TicketProvider {
-  return process.env.MOCK_TICKETS_JSON ? new EnvTicketProvider() : new MockTicketProvider();
+function provider(db: PrismaClient): TicketProvider {
+  return selectTicketProvider(db);
+}
+
+/**
+ * Per-watch check frequencies (user-configurable at watch creation).
+ * The cron tick runs at the finest granularity (15 min); each watch is only
+ * checked when it is "due" based on its own frequency + lastCheckedAt.
+ */
+export const CHECK_FREQUENCY_INTERVAL_MS: Record<string, number> = {
+  every_15_min: 15 * 60 * 1000,
+  hourly: 60 * 60 * 1000,
+  every_6_hours: 6 * 60 * 60 * 1000,
+  daily: 24 * 60 * 60 * 1000,
+};
+
+const DEFAULT_CHECK_INTERVAL_MS = 15 * 60 * 1000;
+
+export function intervalForFrequency(checkFrequency: string | null | undefined): number {
+  if (!checkFrequency) return DEFAULT_CHECK_INTERVAL_MS;
+  const ms: number | undefined = CHECK_FREQUENCY_INTERVAL_MS[checkFrequency];
+  return ms ?? DEFAULT_CHECK_INTERVAL_MS;
+}
+
+/** True when a watch has never been checked or its interval has elapsed. */
+export function isWatchDue(
+  watch: { checkFrequency?: string | null; lastCheckedAt?: Date | null },
+  now: Date = new Date(),
+): boolean {
+  if (!watch.lastCheckedAt) return true;
+  return now.getTime() - watch.lastCheckedAt.getTime() >= intervalForFrequency(watch.checkFrequency);
 }
 
 export interface CycleSummary {
   checked: number;
+  skipped_not_due: number;
   skipped_no_offers: number;
   no_match: number;
   notified: number;
@@ -52,6 +82,7 @@ export interface CycleSummary {
 export async function runAgentCycle(deps?: Partial<WatchAgentDeps>): Promise<CycleSummary> {
   const summary: CycleSummary = {
     checked: 0,
+    skipped_not_due: 0,
     skipped_no_offers: 0,
     no_match: 0,
     notified: 0,
@@ -60,15 +91,18 @@ export async function runAgentCycle(deps?: Partial<WatchAgentDeps>): Promise<Cyc
     error: 0,
   };
   const db = deps?.db ?? getPrisma();
-  const ticketProvider = deps?.provider ?? provider();
+  const ticketProvider = deps?.provider ?? provider(db);
   const agentDeps: WatchAgentDeps = { db, provider: ticketProvider, stripeClient: deps?.stripeClient };
+  const now = new Date();
 
   const watches = await db.movieWatch.findMany({
     where: { status: { in: ["ARMED", "MONITORING"] } },
-    select: { id: true },
+    select: { id: true, checkFrequency: true, lastCheckedAt: true },
   });
+  const dueWatches = watches.filter((w) => isWatchDue(w, now));
+  summary.skipped_not_due = watches.length - dueWatches.length;
 
-  for (const w of watches) {
+  for (const w of dueWatches) {
     try {
       summary.checked += 1;
       // Deterministic pre-filter: no offers → skip the LLM call entirely.
@@ -104,6 +138,12 @@ export async function runAgentCycle(deps?: Partial<WatchAgentDeps>): Promise<Cyc
         resourceId: w.id,
       }).catch(() => {});
       void err;
+    } finally {
+      // Stamp the check time so per-watch frequencies are honored, even
+      // when this pass errored (a check was attempted).
+      await db.movieWatch
+        .update({ where: { id: w.id }, data: { lastCheckedAt: now } })
+        .catch(() => {});
     }
   }
   return summary;
