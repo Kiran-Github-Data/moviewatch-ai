@@ -1,0 +1,1 @@
+{"buildCommand":"pnpm --filter @moviewatch/web build","framework":"nextjs","installCommand":"pnpm install","outputDirectory":"apps/web/.next"}
