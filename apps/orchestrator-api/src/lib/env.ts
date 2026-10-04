@@ -16,6 +16,14 @@ const EnvSchema = z.object({
   TMDB_API_KEY: z.string().min(1).optional(),
   // Policy signing (Milestone 3). Required to arm watches.
   POLICY_SIGNING_SECRET: z.string().min(32, "use at least 32 characters"),
+  // Email (Milestone 5). Optional at boot — notifications are skipped
+  // (best-effort) until configured.
+  RESEND_API_KEY: z.string().min(1).optional(),
+  EMAIL_FROM: z.string().min(1).optional(),
+  // Stripe (Milestone 5). Optional at boot — payment endpoints return 503
+  // until configured. Never log these values (see logger redaction).
+  STRIPE_SECRET_KEY: z.string().min(1).optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

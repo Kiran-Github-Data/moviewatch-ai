@@ -61,6 +61,9 @@ export interface WatchT {
   policyVersion: number;
   preference: PreferenceInput | null;
   policy: null | { hash: string; terms: PolicyTerms; consent: unknown };
+  autoBookEnabled: boolean;
+  consentAt: string | null;
+  maxTotalCents: number | null;
   createdAt: string;
   updatedAt: string;
 }

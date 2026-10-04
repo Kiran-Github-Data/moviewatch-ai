@@ -185,6 +185,17 @@ export const CreateWatchInputSchema = z.object({
   // One preference per watch; each dimension carries rank 1 (first choice)
   // and rank 2 (backup).
   preference: BookingPreferenceInputSchema,
+  /**
+   * Auto-booking request (Milestone 5). The spending cap feeds the policy
+   * preview so the reviewed hash covers it; payment method + purchase
+   * authorization are verified at arm time.
+   */
+  autoBook: z
+    .object({
+      enabled: z.boolean(),
+      maxTotalCents: z.number().int().positive().max(50_000).optional(),
+    })
+    .default({ enabled: false }),
 });
 export type CreateWatchInput = z.infer<typeof CreateWatchInputSchema>;
 
@@ -219,5 +230,21 @@ export const ArmWatchInputSchema = z.object({
     accepted: z.literal(true),
     summary: z.string().min(1).max(2000),
   }),
+  /**
+   * Auto-booking (Milestone 5). When enabled the monitor may charge the
+   * user's default saved card off-session, never exceeding maxTotalCents.
+   * Requires a saved payment method and an explicit purchase authorization.
+   */
+  autoBook: z
+    .object({
+      enabled: z.boolean(),
+      /** Hard spending cap for the automatic purchase, in cents. */
+      maxTotalCents: z.number().int().positive().max(50_000).optional(),
+      /** Our PaymentMethod.id (not the Stripe id) to charge. */
+      paymentMethodId: z.string().min(1).optional(),
+      /** Explicit purchase authorization text the user accepted. */
+      purchaseAuthorization: z.string().min(1).max(2000).optional(),
+    })
+    .default({ enabled: false }),
 });
 export type ArmWatchInput = z.infer<typeof ArmWatchInputSchema>;

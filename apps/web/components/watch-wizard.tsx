@@ -28,6 +28,7 @@ import {
   type WatchT,
 } from "@/lib/watches";
 import { Logo } from "@/components/landing";
+import { PaymentSetup } from "@/components/payment-setup";
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
@@ -201,6 +202,13 @@ export function WatchWizard() {
   const [armed, setArmed] = useState<WatchT | null>(null);
   const [apiError, setApiError] = useState("");
 
+  // Auto-booking (Milestone 5): spending cap, saved card, purchase authorization.
+  const [autoBook, setAutoBook] = useState(false);
+  const [maxTotalCents, setMaxTotalCents] = useState<number | null>(null); // null = auto
+  const [paymentMethodId, setPaymentMethodId] = useState<string | null>(null);
+  const [purchaseAuth, setPurchaseAuth] = useState(false);
+  const effectiveMaxTotal = maxTotalCents ?? pref.ticketCount * pref.maxTicketPriceCents;
+
   const zipValid = /^\d{5}$/.test(zip.trim());
 
   /* Fetch movie details for the hero (public endpoint). */
@@ -350,6 +358,11 @@ export function WatchWizard() {
     if (step === 5) {
       if (pref.ticketCount < 1 || pref.ticketCount > 10) return "Ticket count must be 1–10.";
       if (pref.maxTicketPriceCents <= 0) return "Max price per ticket must be above $0.";
+      if (autoBook) {
+        if (effectiveMaxTotal <= 0) return "Set a spending cap above $0 for auto-booking.";
+        if (!paymentMethodId) return "Select a card for auto-booking — or turn auto-booking off.";
+        if (!purchaseAuth) return "Accept the purchase authorization to enable auto-booking.";
+      }
     }
     return "";
   };
@@ -382,6 +395,10 @@ export function WatchWizard() {
           zip: zip.trim(),
           expiresAt: new Date(`${expiresDate}T00:00:00Z`).toISOString(),
           preference: pref,
+          autoBook: {
+            enabled: autoBook,
+            ...(autoBook ? { maxTotalCents: effectiveMaxTotal } : {}),
+          },
         },
       });
       setCreated(res);
@@ -394,15 +411,27 @@ export function WatchWizard() {
 
   const armWatch = async () => {
     if (!created || !consent) return;
+    if (autoBook && (!paymentMethodId || !purchaseAuth)) return;
     setArming(true);
     setApiError("");
     try {
       const summary = consentSummary(created.policyPreview.terms);
+      const movieName = details?.title || titleParam || `Movie ${tmdbId}`;
       const watch = await apiFetchWithAuth<WatchT>(`/watches/${created.watch.id}/arm`, getToken, {
         method: "POST",
         body: {
           acceptedPolicyHash: created.policyPreview.termsHash,
           consent: { accepted: true, summary },
+          autoBook: {
+            enabled: autoBook,
+            ...(autoBook
+              ? {
+                  maxTotalCents: effectiveMaxTotal,
+                  paymentMethodId,
+                  purchaseAuthorization: `I authorize MovieWatch AI to automatically purchase up to ${pref.ticketCount} ticket(s) for "${movieName}" — never more than ${formatMoney(effectiveMaxTotal)} total — when matching seats are found.`,
+                }
+              : {}),
+          },
         },
       });
       setArmed(watch);
@@ -968,6 +997,82 @@ export function WatchWizard() {
                       />
                     </div>
                   </div>
+                </GlassCard>
+
+                <GlassCard className="p-6">
+                  <Toggle
+                    checked={autoBook}
+                    onChange={(v) => {
+                      setAutoBook(v);
+                      if (!v) {
+                        setPurchaseAuth(false);
+                      }
+                    }}
+                    label="Auto-booking"
+                    description="Fully agentic: the moment matching tickets drop, we buy them within your cap. Off = we email you first."
+                  />
+                  {autoBook && (
+                    <div className="mt-5 space-y-6 border-t border-white/[0.08] pt-5">
+                      <div>
+                        <label
+                          htmlFor="maxtotal"
+                          className="flex items-center gap-2 text-sm font-medium text-white/80"
+                        >
+                          <DollarIcon className="h-4 w-4" /> Max total spend
+                        </label>
+                        <div className="relative mt-2 max-w-[200px]">
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70">$</span>
+                          <input
+                            id="maxtotal"
+                            type="number"
+                            min={1}
+                            step="0.50"
+                            value={(effectiveMaxTotal / 100).toFixed(2)}
+                            onChange={(e) => {
+                              const dollars = Number(e.target.value);
+                              if (!Number.isNaN(dollars) && dollars > 0)
+                                setMaxTotalCents(Math.round(dollars * 100));
+                            }}
+                            className="w-full rounded-2xl border border-white/10 bg-black/40 py-2.5 pl-8 pr-4 text-lg font-semibold outline-none focus:border-gold/60"
+                          />
+                        </div>
+                        <p className="mt-1.5 text-xs text-white/70">
+                          Hard cap — we can never charge more than this. Defaults to{" "}
+                          {pref.ticketCount} × {formatMoney(pref.maxTicketPriceCents)}.
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="mb-3 text-sm font-medium text-white/80">
+                          Card to charge
+                        </p>
+                        <PaymentSetup
+                          compact
+                          selectedId={paymentMethodId}
+                          onSelect={setPaymentMethodId}
+                        />
+                      </div>
+
+                      <label className="flex cursor-pointer items-start gap-4 rounded-3xl border border-gold/25 bg-gold/[0.05] p-5 transition-colors hover:border-gold/50">
+                        <input
+                          type="checkbox"
+                          checked={purchaseAuth}
+                          onChange={(e) => setPurchaseAuth(e.target.checked)}
+                          className="mt-1 h-5 w-5 shrink-0 accent-[#e8b34b]"
+                        />
+                        <span className="text-sm leading-relaxed text-white/70">
+                          I authorize MovieWatch AI to automatically purchase{" "}
+                          <span className="font-medium text-white">
+                            up to {pref.ticketCount} ticket
+                            {pref.ticketCount === 1 ? "" : "s"} — never more than{" "}
+                            {formatMoney(effectiveMaxTotal)} total
+                          </span>{" "}
+                          when matching seats are found. I can disarm or cancel the
+                          watch anytime before purchase.
+                        </span>
+                      </label>
+                    </div>
+                  )}
                 </GlassCard>
 
                 <Collapsible

@@ -9,6 +9,7 @@ import { healthRoutes } from "./routes/health.js";
 import { moviesRoutes } from "./routes/movies.js";
 import { theatersRoutes } from "./routes/theaters.js";
 import { protectedRoutes } from "./routes/protected.js";
+import { paymentsWebhookRoutes } from "./routes/payments.js";
 import { DatabaseNotConfiguredError } from "@moviewatch/database";
 import { TmdbNotConfiguredError } from "@moviewatch/tmdb";
 
@@ -41,6 +42,8 @@ await app.register(rateLimit, { max: 300, timeWindow: "1 minute" });
 await app.register(healthRoutes, { prefix: "/api/v1" });
 await app.register(moviesRoutes, { prefix: "/api/v1" });
 await app.register(theatersRoutes, { prefix: "/api/v1" });
+// Stripe webhook is public but signature-verified (fail closed without secret).
+await app.register(paymentsWebhookRoutes, { prefix: "/api/v1" });
 // Protected (verified Clerk JWT)
 await app.register(protectedRoutes, {
   prefix: "/api/v1",

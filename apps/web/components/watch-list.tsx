@@ -19,6 +19,7 @@ import {
   MapPinIcon,
   PlusIcon,
   TicketIcon,
+  ZapIcon,
 } from "@/components/icons";
 import { GlassCard, NumberTicker, RankBadge, SkeletonCard } from "@/components/ui-kit";
 
@@ -91,6 +92,11 @@ function WatchCard({
             <div className="flex flex-wrap items-center gap-3">
               <h3 className="text-xl font-bold tracking-tight">{watch.movieTitle}</h3>
               <StatusBadge status={watch.status} />
+              {watch.autoBookEnabled && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-gold/40 bg-gold/10 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider text-gold">
+                  <ZapIcon className="h-3 w-3" /> Auto-book
+                </span>
+              )}
             </div>
             <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/70">
               <span className="inline-flex items-center gap-1">

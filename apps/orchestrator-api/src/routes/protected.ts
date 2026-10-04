@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { authPlugin } from "../plugins/auth.js";
 import { watchesRoutes } from "./watches.js";
+import { paymentsRoutes } from "./payments.js";
 
 interface ProtectedRoutesOptions {
   jwksUrl: string;
@@ -26,5 +27,8 @@ export async function protectedRoutes(app: FastifyInstance, opts: ProtectedRoute
   // Milestone 3: watch lifecycle (auth hook from authPlugin applies here too).
   await app.register(watchesRoutes);
 
-  // Milestones 4+: provider-accounts, payments, …
+  // Milestone 5: saved cards for auto-booking.
+  await app.register(paymentsRoutes);
+
+  // Milestones 4+: provider-accounts, …
 }
