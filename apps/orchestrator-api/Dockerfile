@@ -11,12 +11,10 @@ WORKDIR /app
 # Install workspace dependencies first (better layer caching).
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json turbo.json ./
 COPY apps/orchestrator-api/package.json apps/orchestrator-api/package.json
-COPY packages/agent-core/package.json packages/agent-core/package.json
 COPY packages/config/package.json packages/config/package.json
 COPY packages/contracts/package.json packages/contracts/package.json
 COPY packages/database/package.json packages/database/package.json
 COPY packages/policy-engine/package.json packages/policy-engine/package.json
-COPY packages/security/package.json packages/security/package.json
 COPY packages/tmdb/package.json packages/tmdb/package.json
 COPY packages/ui/package.json packages/ui/package.json
 RUN pnpm install --frozen-lockfile
