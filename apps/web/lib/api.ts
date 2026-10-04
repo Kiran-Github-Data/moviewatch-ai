@@ -20,13 +20,16 @@ export async function apiFetch<T>(
   path: string,
   opts: { token?: string | null; method?: string; body?: unknown } = {},
 ): Promise<T> {
+  const hasBody = opts.body !== undefined;
   const res = await fetch(`${API_URL}/api/v1${path}`, {
     method: opts.method ?? "GET",
     headers: {
-      "content-type": "application/json",
+      // Only send content-type when there's a body — Fastify rejects
+      // empty bodies with content-type: application/json.
+      ...(hasBody ? { "content-type": "application/json" } : {}),
       ...(opts.token ? { authorization: `Bearer ${opts.token}` } : {}),
     },
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    body: hasBody ? JSON.stringify(opts.body) : undefined,
     cache: "no-store",
   });
 
