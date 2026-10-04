@@ -140,6 +140,8 @@ function presentWatch(w: {
   autoBookEnabled: boolean;
   consentAt: Date | null;
   maxTotalCents: number | null;
+  checkFrequency: string;
+  lastCheckedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
   preferences: Parameters<typeof toPreferenceInput>[0][];
@@ -172,6 +174,8 @@ function presentWatch(w: {
     autoBookEnabled: w.autoBookEnabled,
     consentAt: w.consentAt?.toISOString() ?? null,
     maxTotalCents: w.maxTotalCents,
+    checkFrequency: w.checkFrequency,
+    lastCheckedAt: w.lastCheckedAt?.toISOString() ?? null,
     createdAt: w.createdAt.toISOString(),
     updatedAt: w.updatedAt.toISOString(),
   };
@@ -255,6 +259,7 @@ export async function watchesRoutes(app: FastifyInstance) {
         actionMode,
         autoBookEnabled,
         maxTotalCents: requestedMaxTotalCents ?? null,
+        checkFrequency: input.checkFrequency,
         preferences: { create: preferenceData(input.preference) },
       },
       include: prefsInclude,
@@ -506,6 +511,7 @@ export async function watchesRoutes(app: FastifyInstance) {
         autoBookEnabled: autoBook.enabled,
         consentAt,
         maxTotalCents: autoBook.enabled ? (autoBook.maxTotalCents ?? null) : null,
+        checkFrequency: parsed.data.checkFrequency ?? watch.checkFrequency,
       },
       include: prefsInclude,
     });
