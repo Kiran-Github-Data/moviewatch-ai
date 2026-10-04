@@ -27,6 +27,7 @@ function makeWatch(overrides: Record<string, unknown> = {}): Record<string, unkn
     tmdbId: 42,
     status: "ARMED",
     zip: "75078",
+    actionMode: "notify",
     autoBookEnabled: false,
     consentAt: null,
     maxTotalCents: null,
@@ -137,6 +138,7 @@ describe("checkWatchAvailability", () => {
     const { db, state } = makeDb(
       makeWatch({
         status: "MONITORING",
+        actionMode: "autobook",
         autoBookEnabled: true,
         consentAt: new Date(),
         maxTotalCents: 3000, // 2 × $18 = $36 > $30 cap
@@ -163,6 +165,7 @@ describe("checkWatchAvailability", () => {
     const { db, state } = makeDb(
       makeWatch({
         status: "MONITORING",
+        actionMode: "autobook",
         autoBookEnabled: true,
         consentAt: new Date(),
         maxTotalCents: 4000,
@@ -197,6 +200,7 @@ describe("checkWatchAvailability", () => {
     const { db, state } = makeDb(
       makeWatch({
         status: "MONITORING",
+        actionMode: "autobook",
         autoBookEnabled: true,
         consentAt: new Date(),
         maxTotalCents: 4000,
@@ -228,6 +232,7 @@ describe("checkWatchAvailability", () => {
     const { db } = makeDb(
       makeWatch({
         status: "MONITORING",
+        actionMode: "autobook",
         autoBookEnabled: true,
         consentAt: new Date(),
         maxTotalCents: 4000,

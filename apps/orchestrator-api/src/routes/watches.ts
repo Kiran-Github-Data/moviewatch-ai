@@ -235,11 +235,13 @@ export async function watchesRoutes(app: FastifyInstance) {
     if (!db) return;
     const userId = req.auth.userId;
 
-    // Auto-booking request: validate the cap now so the policy preview
+    // Action mode: "notify" (email alert) or "autobook" (auto-purchase).
+    // Auto-booking requires a spending cap; validate now so the policy preview
     // covers exactly what the user will be asked to authorize.
-    const autoBookEnabled = input.autoBook.enabled;
+    const actionMode = input.actionMode;
+    const autoBookEnabled = actionMode === "autobook" && input.autoBook.enabled;
     const requestedMaxTotalCents = autoBookEnabled ? input.autoBook.maxTotalCents : undefined;
-    if (autoBookEnabled && !requestedMaxTotalCents) {
+    if (actionMode === "autobook" && !requestedMaxTotalCents) {
       return sendError(reply, 400, "Auto-booking requires maxTotalCents (spending cap)");
     }
 
@@ -250,6 +252,7 @@ export async function watchesRoutes(app: FastifyInstance) {
         movieTitle: input.movieTitle,
         zip: input.zip,
         expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
+        actionMode,
         autoBookEnabled,
         maxTotalCents: requestedMaxTotalCents ?? null,
         preferences: { create: preferenceData(input.preference) },
@@ -499,6 +502,7 @@ export async function watchesRoutes(app: FastifyInstance) {
         policySignature: minted.signature,
         policyVersion: { increment: 1 },
         consentRecord,
+        actionMode: parsed.data.actionMode ?? watch.actionMode,
         autoBookEnabled: autoBook.enabled,
         consentAt,
         maxTotalCents: autoBook.enabled ? (autoBook.maxTotalCents ?? null) : null,

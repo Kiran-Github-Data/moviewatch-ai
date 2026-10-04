@@ -395,6 +395,7 @@ export function WatchWizard() {
           zip: zip.trim(),
           expiresAt: new Date(`${expiresDate}T00:00:00Z`).toISOString(),
           preference: pref,
+          actionMode: autoBook ? "autobook" : "notify",
           autoBook: {
             enabled: autoBook,
             ...(autoBook ? { maxTotalCents: effectiveMaxTotal } : {}),
@@ -422,6 +423,7 @@ export function WatchWizard() {
         body: {
           acceptedPolicyHash: created.policyPreview.termsHash,
           consent: { accepted: true, summary },
+          actionMode: autoBook ? "autobook" : "notify",
           autoBook: {
             enabled: autoBook,
             ...(autoBook
@@ -1000,17 +1002,52 @@ export function WatchWizard() {
                 </GlassCard>
 
                 <GlassCard className="p-6">
-                  <Toggle
-                    checked={autoBook}
-                    onChange={(v) => {
-                      setAutoBook(v);
-                      if (!v) {
+                  <p className="text-sm font-semibold text-white">
+                    When tickets are found, what should the agent do?
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAutoBook(false);
                         setPurchaseAuth(false);
-                      }
-                    }}
-                    label="Auto-booking"
-                    description="Fully agentic: the moment matching tickets drop, we buy them within your cap. Off = we email you first."
-                  />
+                      }}
+                      className={`rounded-2xl border p-4 text-left transition-all ${
+                        !autoBook
+                          ? "border-gold/60 bg-gold/[0.08]"
+                          : "border-white/10 bg-white/[0.02] hover:border-white/25"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${!autoBook ? "bg-gold text-black" : "bg-white/10 text-white/70"}`}>
+                          <BellIcon className="h-4 w-4" />
+                        </span>
+                        <span className="font-semibold text-white">Email me first</span>
+                      </div>
+                      <p className="mt-2 text-sm text-white/70">
+                        Get an instant email with a booking link. You complete the purchase.
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAutoBook(true)}
+                      className={`rounded-2xl border p-4 text-left transition-all ${
+                        autoBook
+                          ? "border-gold/60 bg-gold/[0.08]"
+                          : "border-white/10 bg-white/[0.02] hover:border-white/25"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`flex h-8 w-8 items-center justify-center rounded-xl ${autoBook ? "bg-gold text-black" : "bg-white/10 text-white/70"}`}>
+                          <ZapIcon className="h-4 w-4" />
+                        </span>
+                        <span className="font-semibold text-white">Book automatically</span>
+                      </div>
+                      <p className="mt-2 text-sm text-white/70">
+                        Fully agentic: we buy the moment tickets drop, within your cap.
+                      </p>
+                    </button>
+                  </div>
                   {autoBook && (
                     <div className="mt-5 space-y-6 border-t border-white/[0.08] pt-5">
                       <div>

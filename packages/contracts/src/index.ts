@@ -186,10 +186,13 @@ export const CreateWatchInputSchema = z.object({
   // and rank 2 (backup).
   preference: BookingPreferenceInputSchema,
   /**
-   * Auto-booking request (Milestone 5). The spending cap feeds the policy
-   * preview so the reviewed hash covers it; payment method + purchase
-   * authorization are verified at arm time.
+   * What the agent does when tickets are found (Milestone 5).
+   * - "notify": send an email alert with booking link (default, no payment needed)
+   * - "autobook": automatically purchase within spending cap (requires payment
+   *   method + explicit purchase authorization at arm time)
+   * The spending cap feeds the policy preview so the reviewed hash covers it.
    */
+  actionMode: z.enum(["notify", "autobook"]).default("notify"),
   autoBook: z
     .object({
       enabled: z.boolean(),
@@ -230,6 +233,12 @@ export const ArmWatchInputSchema = z.object({
     accepted: z.literal(true),
     summary: z.string().min(1).max(2000),
   }),
+  /**
+   * What the agent does when tickets are found.
+   * - "notify": email alert with booking link (default)
+   * - "autobook": automatically purchase within spending cap
+   */
+  actionMode: z.enum(["notify", "autobook"]).default("notify"),
   /**
    * Auto-booking (Milestone 5). When enabled the monitor may charge the
    * user's default saved card off-session, never exceeding maxTotalCents.

@@ -20,11 +20,32 @@ model User {
   notifyPush   Boolean  @default(true)
   notifyEmail  Boolean  @default(true)
   notifySms    Boolean  @default(false)
+  /// Stripe customer for off-session auto-booking charges (Milestone 5).
+  stripeCustomerId String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   watches      MovieWatch[]
+  paymentMethods PaymentMethod[]
 
   @@index([clerkUserId])
+}
+
+/// Saved card for auto-booking (Milestone 5). Raw PAN never touches our DB —
+/// only Stripe's payment-method reference plus display metadata.
+model PaymentMethod {
+  id                  String   @id @default(cuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripePaymentMethodId String  @unique
+  brand               String
+  last4               String
+  expMonth            Int
+  expYear             Int
+  isDefault           Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([userId])
 }
 
 /// Movie metadata cached from TMDB (see Milestone 2).
@@ -90,6 +111,14 @@ model MovieWatch {
   policyVersion   Int      @default(0)
   policySignature String?  // HMAC-SHA256 of policyDocument
   consentRecord   String?  // JSON: accepted limits summary + timestamp
+  // Action mode (Milestone 5+): what the agent does when tickets are found.
+  // "notify" (default): email alert with booking link. "autobook": charge the
+  // saved card when matching tickets are found, never exceeding maxTotalCents.
+  // consentAt records the moment the user explicitly authorized automatic purchase.
+  actionMode      String    @default("notify")
+  autoBookEnabled Boolean   @default(false)
+  consentAt       DateTime?
+  maxTotalCents   Int?
   idempotencyKey  String   @unique @default(cuid())
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt

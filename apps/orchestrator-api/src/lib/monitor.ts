@@ -43,6 +43,7 @@ export interface WatchForCheck {
   tmdbId: number;
   status: string;
   zip: string;
+  actionMode: string;
   autoBookEnabled: boolean;
   consentAt: Date | null;
   maxTotalCents: number | null;
@@ -174,6 +175,7 @@ async function loadWatchForCheck(db: PrismaClient, watchId: string): Promise<Wat
     tmdbId: w.tmdbId,
     status: w.status,
     zip: w.zip,
+    actionMode: w.actionMode,
     autoBookEnabled: w.autoBookEnabled,
     consentAt: w.consentAt,
     maxTotalCents: w.maxTotalCents,
@@ -221,6 +223,7 @@ export async function checkWatchAvailability(
   const totalCents = best.pricePerTicketCents * watch.ticketCount;
 
   const canAutoBook =
+    watch.actionMode === "autobook" &&
     watch.autoBookEnabled &&
     watch.consentAt !== null &&
     watch.maxTotalCents !== null &&
@@ -228,6 +231,8 @@ export async function checkWatchAvailability(
     watch.stripeCustomerId !== null;
 
   if (!canAutoBook) {
+    // User chose "notify" mode, or auto-book prerequisites aren't met:
+    // send an email alert with booking link.
     await transition(db, watch.id, status, "TICKETS_DETECTED", "monitor.tickets_detected", "monitor");
     const { subject, html } = ticketsAvailableEmail({
       movieTitle: watch.movieTitle,
