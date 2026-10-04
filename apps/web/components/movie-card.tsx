@@ -33,7 +33,7 @@ export function MovieCard({ movie, index = 0 }: { movie: MovieSummary; index?: n
               className="object-cover transition-transform duration-500 ease-out group-hover:scale-[1.06]"
             />
           ) : (
-            <div className="flex h-full items-center justify-center bg-gradient-to-br from-white/[0.06] to-transparent p-4 text-center text-sm text-white/40">
+            <div className="flex h-full items-center justify-center bg-gradient-to-br from-white/[0.06] to-transparent p-4 text-center text-sm text-white/70">
               {movie.title}
             </div>
           )}

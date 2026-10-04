@@ -52,7 +52,7 @@ export function Chip({
           ? variant === "gold"
             ? "bg-gradient-to-br from-amber-300 to-amber-500 text-black shadow-[0_4px_16px_rgba(232,179,75,0.35)]"
             : "border-gold/60 bg-gold/15 text-gold"
-          : "border border-white/10 bg-white/[0.03] text-white/60 hover:border-white/25 hover:text-white",
+          : "border border-white/10 bg-white/[0.03] text-white/80 hover:border-white/25 hover:text-white",
         variant === "default" && "border",
         className,
       )}
@@ -78,7 +78,7 @@ export function Stepper({
 }) {
   return (
     <div>
-      <span className="text-sm font-medium text-white/60">{label}</span>
+      <span className="text-sm font-medium text-white/80">{label}</span>
       <div className="mt-2 flex items-center gap-4">
         <button
           type="button"
@@ -126,7 +126,7 @@ export function Toggle({
     >
       <span>
         <span className="block text-sm font-medium">{label}</span>
-        {description && <span className="mt-0.5 block text-xs text-white/50">{description}</span>}
+        {description && <span className="mt-0.5 block text-xs text-white/75">{description}</span>}
       </span>
       <span
         className={cn(
@@ -175,7 +175,7 @@ export function StepProgress({
       <div className="mb-3 flex items-baseline justify-between">
         <p className="text-sm font-semibold tracking-wide text-white">
           {steps[current]}
-          <span className="ml-2 font-normal text-white/40">
+          <span className="ml-2 font-normal text-white/70">
             {current + 1} of {steps.length}
           </span>
         </p>
@@ -194,7 +194,7 @@ export function StepProgress({
             key={s}
             className={cn(
               "hidden text-[11px] sm:block",
-              i === current ? "font-medium text-gold" : i < current ? "text-white/60" : "text-white/25",
+              i === current ? "font-medium text-gold" : i < current ? "text-white/80" : "text-white/25",
             )}
           >
             {s}
@@ -263,10 +263,10 @@ export function Collapsible({
       >
         <span>
           <span className="block text-sm font-semibold">{title}</span>
-          {subtitle && <span className="mt-0.5 block text-xs text-white/50">{subtitle}</span>}
+          {subtitle && <span className="mt-0.5 block text-xs text-white/75">{subtitle}</span>}
         </span>
         <ChevronDownIcon
-          className={cn("h-5 w-5 text-white/50 transition-transform duration-200", open && "rotate-180")}
+          className={cn("h-5 w-5 text-white/75 transition-transform duration-200", open && "rotate-180")}
         />
       </button>
       {open && <div className="border-t border-white/[0.06] px-6 py-5">{children}</div>}

@@ -39,7 +39,7 @@ function DimBadge({ label, rank1, rank2 }: { label: string; rank1: string; rank2
       </span>
       <div className="min-w-0">
         <p className="truncate font-medium text-white/90">{rank1}</p>
-        {rank2 && <p className="truncate text-white/50">{rank2}</p>}
+        {rank2 && <p className="truncate text-white/75">{rank2}</p>}
       </div>
     </div>
   );
@@ -91,7 +91,7 @@ function WatchCard({
               <h3 className="text-xl font-bold tracking-tight">{watch.movieTitle}</h3>
               <StatusBadge status={watch.status} />
             </div>
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/50">
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/75">
               <span className="inline-flex items-center gap-1">
                 <MapPinIcon className="h-3.5 w-3.5" /> {watch.zip}
               </span>
@@ -127,11 +127,11 @@ function WatchCard({
         {watch.preference ? (
           <PreferenceSummary p={watch.preference} />
         ) : (
-          <p className="mt-4 text-sm text-white/40">No preferences saved.</p>
+          <p className="mt-4 text-sm text-white/70">No preferences saved.</p>
         )}
 
         <div className="mt-4 flex items-center justify-between border-t border-white/[0.06] pt-4">
-          <div className="flex items-center gap-2 text-xs text-white/40">
+          <div className="flex items-center gap-2 text-xs text-white/70">
             <RankBadge rank={1} />
             <span>tried before</span>
             <RankBadge rank={2} />

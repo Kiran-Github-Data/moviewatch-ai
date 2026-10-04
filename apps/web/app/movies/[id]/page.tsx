@@ -95,7 +95,7 @@ export default async function MovieDetailPage({ params }: { params: Promise<{ id
                 </span>
               ))}
               {runtime && (
-                <span className="px-1 text-sm tabular-nums text-white/50">{runtime}</span>
+                <span className="px-1 text-sm tabular-nums text-white/75">{runtime}</span>
               )}
               {details.voteAverage > 0 && (
                 <span className="inline-flex items-center gap-1.5 font-bold text-gold">

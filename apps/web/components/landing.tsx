@@ -81,7 +81,7 @@ function HeroCopy() {
         initial={{ opacity: 0, y: 24 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
-        className="mt-6 max-w-xl text-lg leading-relaxed text-white/60"
+        className="mt-6 max-w-xl text-lg leading-relaxed text-white/80"
       >
         Pick a future movie, rank your perfect theater, showtime, and seats — then forget
         about it. The moment tickets drop, your watch agent books them automatically,

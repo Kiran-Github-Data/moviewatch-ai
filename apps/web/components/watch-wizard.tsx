@@ -117,7 +117,7 @@ function PreferenceRow({
         {icon}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/40">{label}</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/70">{label}</p>
         <div className="mt-2 space-y-1.5">
           <p className="flex flex-wrap items-center gap-2 text-sm">
             <RankBadge rank={1} />
@@ -148,7 +148,7 @@ function TermsSummary({ terms }: { terms: PolicyTerms }) {
     <dl className="divide-y divide-white/[0.06]">
       {rows.map(([k, v]) => (
         <div key={k} className="flex items-center justify-between gap-4 px-6 py-3.5">
-          <dt className="text-sm text-white/50">{k}</dt>
+          <dt className="text-sm text-white/75">{k}</dt>
           <dd className="text-sm font-semibold tabular-nums">{v}</dd>
         </div>
       ))}
@@ -456,7 +456,7 @@ export function WatchWizard() {
             <h1 className="mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
               We&apos;re on it.
             </h1>
-            <p className="mx-auto mt-4 max-w-md text-white/60">
+            <p className="mx-auto mt-4 max-w-md text-white/80">
               Your agent is now tracking ticket releases for{" "}
               <span className="font-semibold text-white">{armed.movieTitle}</span>. The moment
               your preferences match, we book — you just get the confirmation.
@@ -473,7 +473,7 @@ export function WatchWizard() {
                 )}
                 <div>
                   <p className="font-semibold">{armed.movieTitle}</p>
-                  <p className="mt-1 text-sm text-white/50">
+                  <p className="mt-1 text-sm text-white/75">
                     {armed.zip} · expires {formatDateShort(armed.expiresAt)}
                   </p>
                 </div>
@@ -486,13 +486,13 @@ export function WatchWizard() {
             {armed.preference && (
               <div className="mt-4 grid grid-cols-2 gap-3 border-t border-white/[0.06] pt-4 text-sm">
                 <div>
-                  <p className="text-xs text-white/40">Theater</p>
+                  <p className="text-xs text-white/70">Theater</p>
                   <p className="mt-0.5 font-medium">
                     {theaterById(armed.preference.theatersRank1[0] ?? "")?.name ?? "—"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-white/40">Tickets</p>
+                  <p className="text-xs text-white/70">Tickets</p>
                   <p className="mt-0.5 font-medium">
                     {armed.preference.ticketCount} × up to{" "}
                     {formatMoney(armed.preference.maxTicketPriceCents)}
@@ -525,7 +525,7 @@ export function WatchWizard() {
         <Link href="/"><Logo /></Link>
         <Link
           href="/movies"
-          className="inline-flex items-center gap-1.5 text-sm text-white/50 transition-colors hover:text-white"
+          className="inline-flex items-center gap-1.5 text-sm text-white/75 transition-colors hover:text-white"
         >
           <ArrowLeftIcon className="h-4 w-4" /> All movies
         </Link>
@@ -589,7 +589,7 @@ export function WatchWizard() {
                     </p>
                     <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">{movieTitle}</h1>
                     {details && (
-                      <p className="mt-2 text-sm text-white/60">
+                      <p className="mt-2 text-sm text-white/80">
                         {details.releaseDate
                           ? new Date(details.releaseDate).toLocaleDateString("en-US", {
                               month: "long",
@@ -606,11 +606,11 @@ export function WatchWizard() {
                 </div>
               </div>
               {!details && (
-                <div className="mt-4 flex items-center gap-3 text-sm text-white/40">
+                <div className="mt-4 flex items-center gap-3 text-sm text-white/70">
                   <Skeleton className="h-4 w-48" />
                 </div>
               )}
-              <p className="mt-6 max-w-xl text-white/60">
+              <p className="mt-6 max-w-xl text-white/80">
                 Tell us your perfect theater, showtime, and seats. Your AI agent watches
                 releases around the clock and books the second tickets matching your
                 preferences go live.
@@ -641,14 +641,14 @@ export function WatchWizard() {
                   }}
                   placeholder="75078"
                   autoComplete="postal-code"
-                  className="w-48 rounded-2xl border border-white/10 bg-black/40 px-5 py-3.5 text-2xl font-semibold tracking-[0.3em] outline-none transition-colors placeholder:text-white/25 focus:border-gold/60"
+                  className="w-48 rounded-2xl border border-white/10 bg-black/40 px-5 py-3.5 text-2xl font-semibold tracking-[0.3em] outline-none transition-colors placeholder:text-white/45 focus:border-gold/60"
                 />
                 <FieldError message={zipTouched && !zipValid ? "Enter a valid 5-digit ZIP code." : undefined} />
 
                 <div className="mt-6">
                   {theatersLoading && (
                     <div className="space-y-3">
-                      <div className="flex items-center gap-3 text-sm text-white/50">
+                      <div className="flex items-center gap-3 text-sm text-white/75">
                         <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-gold" />
                         Finding theaters near {zip}…
                       </div>
@@ -687,7 +687,7 @@ export function WatchWizard() {
                     </motion.div>
                   )}
                   {!zipValid && !theatersLoading && (
-                    <p className="text-sm text-white/40">
+                    <p className="text-sm text-white/70">
                       Theaters load automatically once you enter a ZIP.
                     </p>
                   )}
@@ -736,12 +736,12 @@ export function WatchWizard() {
                         <div className="flex items-start justify-between gap-4 pr-8">
                           <div className="min-w-0">
                             <p className="font-semibold">{t.name}</p>
-                            <p className="mt-1 truncate text-sm text-white/50">
+                            <p className="mt-1 truncate text-sm text-white/75">
                               {[t.address, t.city].filter(Boolean).join(" · ") || "Address unavailable"}
                             </p>
                           </div>
                           {kmToMiles(t.distanceKm) && (
-                            <span className="flex shrink-0 items-center gap-1 text-sm text-white/50">
+                            <span className="flex shrink-0 items-center gap-1 text-sm text-white/75">
                               <MapPinIcon className="h-4 w-4" />
                               {kmToMiles(t.distanceKm)}
                             </span>
@@ -839,7 +839,7 @@ export function WatchWizard() {
                       setCustomWindowError("");
                     }}
                     placeholder="19:30-22:00"
-                    className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm outline-none placeholder:text-white/25 focus:border-gold/60"
+                    className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm outline-none placeholder:text-white/45 focus:border-gold/60"
                   />
                   <Button type="button" variant="ghost" size="sm" onClick={() => addCustomWindow(1)}>
                     Add
@@ -875,7 +875,7 @@ export function WatchWizard() {
                       >
                         <SelectedRing show={selected} />
                         <p className="pr-8 font-semibold">{FORMAT_META[f]?.label ?? f}</p>
-                        <p className="mt-1 text-sm text-white/50">{FORMAT_META[f]?.hint}</p>
+                        <p className="mt-1 text-sm text-white/75">{FORMAT_META[f]?.hint}</p>
                       </button>
                     );
                   })}
@@ -947,12 +947,12 @@ export function WatchWizard() {
                   <div>
                     <label
                       htmlFor="maxprice"
-                      className="flex items-center gap-2 text-sm font-medium text-white/60"
+                      className="flex items-center gap-2 text-sm font-medium text-white/80"
                     >
                       <DollarIcon className="h-4 w-4" /> Max per ticket
                     </label>
                     <div className="relative mt-2 max-w-[200px]">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40">$</span>
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/70">$</span>
                       <input
                         id="maxprice"
                         type="number"
@@ -1050,7 +1050,7 @@ export function WatchWizard() {
                 )}
                 <div>
                   <p className="text-xl font-bold tracking-tight">{movieTitle}</p>
-                  <p className="mt-1 flex items-center gap-1.5 text-sm text-white/50">
+                  <p className="mt-1 flex items-center gap-1.5 text-sm text-white/75">
                     <MapPinIcon className="h-4 w-4" /> {zip}
                   </p>
                 </div>
@@ -1143,7 +1143,7 @@ export function WatchWizard() {
                     <GlassCard>
                       <TermsSummary terms={created.policyPreview.terms} />
                     </GlassCard>
-                    <p className="mt-3 text-sm text-white/50">
+                    <p className="mt-3 text-sm text-white/75">
                       MovieWatch AI may only book within these limits. Nothing is charged
                       until tickets matching your preferences are found.
                     </p>
