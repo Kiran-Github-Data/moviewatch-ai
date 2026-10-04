@@ -1,0 +1,1 @@
+{"extends":"@moviewatch/config/tsconfig.base.json","include":["prisma","src"]}
