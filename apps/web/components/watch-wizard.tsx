@@ -209,6 +209,9 @@ export function WatchWizard() {
   const [purchaseAuth, setPurchaseAuth] = useState(false);
   const effectiveMaxTotal = maxTotalCents ?? pref.ticketCount * pref.maxTicketPriceCents;
 
+  // Monitoring schedule: how often the agent checks this watch.
+  const [checkFrequency, setCheckFrequency] = useState("every_15_min");
+
   const zipValid = /^\d{5}$/.test(zip.trim());
 
   /* Fetch movie details for the hero (public endpoint). */
@@ -396,6 +399,7 @@ export function WatchWizard() {
           expiresAt: new Date(`${expiresDate}T00:00:00Z`).toISOString(),
           preference: pref,
           actionMode: autoBook ? "autobook" : "notify",
+          checkFrequency,
           autoBook: {
             enabled: autoBook,
             ...(autoBook ? { maxTotalCents: effectiveMaxTotal } : {}),
@@ -424,6 +428,7 @@ export function WatchWizard() {
           acceptedPolicyHash: created.policyPreview.termsHash,
           consent: { accepted: true, summary },
           actionMode: autoBook ? "autobook" : "notify",
+          checkFrequency,
           autoBook: {
             enabled: autoBook,
             ...(autoBook
@@ -998,6 +1003,53 @@ export function WatchWizard() {
                         className="w-full rounded-2xl border border-white/10 bg-black/40 py-2.5 pl-8 pr-4 text-lg font-semibold outline-none focus:border-gold/60"
                       />
                     </div>
+                  </div>
+                </GlassCard>
+
+                <GlassCard className="p-6">
+                  <p className="text-sm font-semibold text-white">
+                    How often should we check?
+                  </p>
+                  <p className="mt-1 text-xs text-white/70">
+                    Faster checks catch hot releases sooner; slower checks are lighter.
+                  </p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {[
+                      {
+                        value: "every_15_min",
+                        label: "Every 15 minutes",
+                        desc: "Fastest alerts — best for premieres selling out quickly.",
+                      },
+                      {
+                        value: "hourly",
+                        label: "Hourly",
+                        desc: "Good balance for most upcoming releases.",
+                      },
+                      {
+                        value: "every_6_hours",
+                        label: "Every 6 hours",
+                        desc: "For movies still weeks from release.",
+                      },
+                      {
+                        value: "daily",
+                        label: "Daily",
+                        desc: "Lightest touch — far-future releases only.",
+                      },
+                    ].map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => setCheckFrequency(opt.value)}
+                        className={`rounded-2xl border p-4 text-left transition-all ${
+                          checkFrequency === opt.value
+                            ? "border-gold/60 bg-gold/[0.08]"
+                            : "border-white/10 bg-white/[0.02] hover:border-white/25"
+                        }`}
+                      >
+                        <span className="font-semibold text-white">{opt.label}</span>
+                        <p className="mt-1.5 text-sm text-white/70">{opt.desc}</p>
+                      </button>
+                    ))}
                   </div>
                 </GlassCard>
 
