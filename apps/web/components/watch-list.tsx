@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
 import { Button, EmptyState, StatusBadge } from "@moviewatch/ui";
-import { apiFetch } from "@/lib/api";
+import { apiFetchWithAuth } from "@/lib/api";
+import { useFreshToken } from "@/lib/use-fresh-token";
 import {
   DAY_LABELS,
   formatDateShort,
@@ -31,7 +31,7 @@ function preferenceLine(w: WatchT): string {
 }
 
 export function WatchList() {
-  const { getToken } = useAuth();
+  const getToken = useFreshToken();
   const [watches, setWatches] = useState<WatchT[] | null>(null);
   const [error, setError] = useState("");
   const [acting, setActing] = useState<string | null>(null);
@@ -39,9 +39,7 @@ export function WatchList() {
   const load = useCallback(async () => {
     setError("");
     try {
-      const token = await getToken();
-      if (!token) throw new Error("API 401 on /watches: session expired");
-      const res = await apiFetch<{ watches: WatchT[] }>("/watches", { token });
+      const res = await apiFetchWithAuth<{ watches: WatchT[] }>("/watches", getToken);
       setWatches(res.watches);
     } catch (err) {
       setError(friendlyWatchError(err));
@@ -57,9 +55,7 @@ export function WatchList() {
     setActing(`${action}:${id}`);
     setError("");
     try {
-      const token = await getToken();
-      if (!token) throw new Error("API 401 on /watches: session expired");
-      await apiFetch(`/watches/${id}/${action}`, { token, method: "POST" });
+      await apiFetchWithAuth(`/watches/${id}/${action}`, getToken, { method: "POST" });
       await load();
     } catch (err) {
       setError(friendlyWatchError(err));

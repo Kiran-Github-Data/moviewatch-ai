@@ -23,15 +23,14 @@ const validCreate = {
   tmdbId: 42,
   movieTitle: "Test Movie",
   zip: "75078",
-  preferences: [
-    {
-      rank: 1,
-      theaterIds: ["theater_1"],
-      timeWindows: ["evening"],
-      ticketCount: 2,
-      maxTicketPriceCents: 2000,
-    },
-  ],
+  preference: {
+    theatersRank1: ["theater_1"],
+    theatersRank2: ["theater_2"],
+    timeWindowsRank1: ["evening"],
+    timeWindowsRank2: ["afternoon"],
+    ticketCount: 2,
+    maxTicketPriceCents: 2000,
+  },
 };
 
 const validArm = {
@@ -45,20 +44,16 @@ describe("watches routes", () => {
     assert.equal(res.statusCode, 400);
   });
 
-  it("rejects duplicate preference ranks", async () => {
+  it("rejects a preference with no theaters", async () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/v1/watches",
       payload: {
         ...validCreate,
-        preferences: [
-          { ...validCreate.preferences[0], rank: 1 },
-          { ...validCreate.preferences[0], rank: 1 },
-        ],
+        preference: { ...validCreate.preference, theatersRank1: [] },
       },
     });
     assert.equal(res.statusCode, 400);
-    assert.match(res.body, /distinct/);
   });
 
   it("rejects a bad ZIP", async () => {

@@ -104,11 +104,12 @@ export interface MintPolicyInput {
   watchId: string;
   userId: string;
   tmdbId: number;
-  preferences: {
+  preference: {
     maxTicketPriceCents: number;
     ticketCount: number;
-    theaterIds: string[];
-  }[];
+    theatersRank1: string[];
+    theatersRank2: string[];
+  };
   expiresAt: string; // ISO datetime
   requireHumanApprovalAboveCents?: number;
   allowedProvider?: string;
@@ -119,16 +120,14 @@ export interface MintPolicyInput {
  * the signature is only minted at arm time.
  */
 export function buildPolicyDocument(input: MintPolicyInput): PolicyDocument {
-  if (input.preferences.length === 0) {
-    throw new PolicyError("policy requires at least one preference");
-  }
-  const allowedTheaterIds = [...new Set(input.preferences.flatMap((p) => p.theaterIds))];
+  const p = input.preference;
+  const allowedTheaterIds = [...new Set([...p.theatersRank1, ...p.theatersRank2])];
   if (allowedTheaterIds.length === 0) {
     throw new PolicyError("policy requires at least one allowed theater");
   }
 
-  const maxTicketPriceCents = Math.max(...input.preferences.map((p) => p.maxTicketPriceCents));
-  const maxTickets = Math.max(...input.preferences.map((p) => p.ticketCount));
+  const maxTicketPriceCents = p.maxTicketPriceCents;
+  const maxTickets = p.ticketCount;
   const maxTotalCents = maxTicketPriceCents * maxTickets;
 
   const document = PolicyDocumentSchema.parse({

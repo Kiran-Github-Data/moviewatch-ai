@@ -157,13 +157,20 @@ export const SeatRulesSchema = z.object({
 export type SeatRules = z.infer<typeof SeatRulesSchema>;
 
 export const BookingPreferenceInputSchema = z.object({
-  rank: z.union([z.literal(1), z.literal(2)]),
-  theaterIds: z.array(z.string().min(1)).min(1).max(10),
-  daysOfWeek: z.array(z.number().int().min(0).max(6)).max(7).default([]),
+  // Theaters: first choice + backup (Theater IDs from the directory)
+  theatersRank1: z.array(z.string().min(1)).min(1).max(10),
+  theatersRank2: z.array(z.string().min(1)).max(10).default([]),
+  // Days of week: first choice + backup (0=Sun..6=Sat; empty = any day)
+  daysRank1: z.array(z.number().int().min(0).max(6)).max(7).default([]),
+  daysRank2: z.array(z.number().int().min(0).max(6)).max(7).default([]),
   dateFrom: z.string().datetime().nullable().default(null),
   dateTo: z.string().datetime().nullable().default(null),
-  timeWindows: z.array(timeWindowSchema).min(1).max(8),
-  formats: z.array(z.string().min(1)).max(6).default([]),
+  // Showtime windows: first choice + backup
+  timeWindowsRank1: z.array(timeWindowSchema).min(1).max(8),
+  timeWindowsRank2: z.array(timeWindowSchema).max(8).default([]),
+  // Formats: first choice + backup
+  formatsRank1: z.array(z.string().min(1)).max(6).default([]),
+  formatsRank2: z.array(z.string().min(1)).max(6).default([]),
   ticketCount: z.number().int().min(1).max(10).default(2),
   maxTicketPriceCents: z.number().int().positive().max(50_000),
   seatRules: SeatRulesSchema.default({}),
@@ -175,27 +182,16 @@ export const CreateWatchInputSchema = z.object({
   movieTitle: z.string().min(1).max(200),
   zip: z.string().regex(/^\d{5}$/, "expected 5-digit ZIP"),
   expiresAt: z.string().datetime().optional(),
-  preferences: z
-    .array(BookingPreferenceInputSchema)
-    .min(1)
-    .max(2)
-    .refine((prefs) => new Set(prefs.map((p) => p.rank)).size === prefs.length, {
-      message: "preference ranks must be distinct (1 and/or 2)",
-    }),
+  // One preference per watch; each dimension carries rank 1 (first choice)
+  // and rank 2 (backup).
+  preference: BookingPreferenceInputSchema,
 });
 export type CreateWatchInput = z.infer<typeof CreateWatchInputSchema>;
 
 export const UpdateWatchInputSchema = z.object({
   zip: z.string().regex(/^\d{5}$/).optional(),
   expiresAt: z.string().datetime().nullable().optional(),
-  preferences: z
-    .array(BookingPreferenceInputSchema)
-    .min(1)
-    .max(2)
-    .refine((prefs) => new Set(prefs.map((p) => p.rank)).size === prefs.length, {
-      message: "preference ranks must be distinct (1 and/or 2)",
-    })
-    .optional(),
+  preference: BookingPreferenceInputSchema.optional(),
 });
 export type UpdateWatchInput = z.infer<typeof UpdateWatchInputSchema>;
 

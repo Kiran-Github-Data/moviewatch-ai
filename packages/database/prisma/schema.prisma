@@ -99,25 +99,32 @@ model MovieWatch {
   @@index([tmdbId])
 }
 
-/// One ranked booking preference within a watch (rank 1 or 2).
+/// One ranked booking preference per watch (Milestone 4).
+/// Each dimension has a first choice (rank 1) and an optional backup (rank 2).
+/// The booking agent prefers showings matching more rank-1 dimensions.
 model BookingPreference {
   id                   String   @id @default(cuid())
-  watchId              String
+  watchId              String   @unique
   watch                MovieWatch @relation(fields: [watchId], references: [id], onDelete: Cascade)
-  rank                 Int      // 1 | 2
-  theaterIds           String[] @default([])
-  daysOfWeek           Int[]    @default([]) // 0=Sun..6=Sat; empty = any day
+  // Theaters: first choice + backup (Theater IDs from the directory)
+  theatersRank1        String[] @default([])
+  theatersRank2        String[] @default([])
+  // Days of week: first choice + backup (0=Sun..6=Sat; empty = any day)
+  daysRank1            Int[]    @default([])
+  daysRank2            Int[]    @default([])
   dateFrom             DateTime?
   dateTo               DateTime?
-  timeWindows          String[] @default([]) // morning|afternoon|evening|late-night or HH:MM-HH:MM
-  formats              String[] @default([]) // IMAX, XD, Dolby, ...
+  // Showtime windows: first choice + backup
+  timeWindowsRank1     String[] @default([])
+  timeWindowsRank2     String[] @default([])
+  // Formats: first choice + backup (IMAX, XD, Dolby, ...)
+  formatsRank1         String[] @default([])
+  formatsRank2         String[] @default([])
   ticketCount          Int      @default(2)
   maxTicketPriceCents  Int
   seatRules            String?  // JSON SeatPreference
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
-
-  @@unique([watchId, rank])
 }
 
 /// Tamper-evident audit trail (Milestone 3). Hash-chained per resource.

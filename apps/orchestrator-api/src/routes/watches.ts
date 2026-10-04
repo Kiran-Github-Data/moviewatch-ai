@@ -84,25 +84,31 @@ async function writeAudit(
 }
 
 function toPreferenceInput(p: {
-  rank: number;
-  theaterIds: string[];
-  daysOfWeek: number[];
+  theatersRank1: string[];
+  theatersRank2: string[];
+  daysRank1: number[];
+  daysRank2: number[];
   dateFrom: Date | null;
   dateTo: Date | null;
-  timeWindows: string[];
-  formats: string[];
+  timeWindowsRank1: string[];
+  timeWindowsRank2: string[];
+  formatsRank1: string[];
+  formatsRank2: string[];
   ticketCount: number;
   maxTicketPriceCents: number;
   seatRules: string | null;
 }) {
   return {
-    rank: p.rank,
-    theaterIds: p.theaterIds,
-    daysOfWeek: p.daysOfWeek,
+    theatersRank1: p.theatersRank1,
+    theatersRank2: p.theatersRank2,
+    daysRank1: p.daysRank1,
+    daysRank2: p.daysRank2,
     dateFrom: p.dateFrom?.toISOString() ?? null,
     dateTo: p.dateTo?.toISOString() ?? null,
-    timeWindows: p.timeWindows,
-    formats: p.formats,
+    timeWindowsRank1: p.timeWindowsRank1,
+    timeWindowsRank2: p.timeWindowsRank2,
+    formatsRank1: p.formatsRank1,
+    formatsRank2: p.formatsRank2,
     ticketCount: p.ticketCount,
     maxTicketPriceCents: p.maxTicketPriceCents,
     seatRules: p.seatRules ? JSON.parse(p.seatRules) : null,
@@ -157,51 +163,52 @@ function presentWatch(w: {
 
 function policyInputFor(
   watch: { id: string; userId: string; tmdbId: number; expiresAt: Date | null },
-  preferences: { maxTicketPriceCents: number; ticketCount: number; theaterIds: string[] }[],
+  preference: { maxTicketPriceCents: number; ticketCount: number; theatersRank1: string[]; theatersRank2: string[] },
 ): MintPolicyInput {
   return {
     watchId: watch.id,
     userId: watch.userId,
     tmdbId: watch.tmdbId,
-    preferences,
+    preference,
     expiresAt: (watch.expiresAt ?? new Date(Date.now() + 180 * 24 * 3600 * 1000)).toISOString(),
   };
 }
 
 function preferenceData(p: BookingPreferenceInput) {
   return {
-    rank: p.rank,
-    theaterIds: p.theaterIds,
-    daysOfWeek: p.daysOfWeek,
+    theatersRank1: p.theatersRank1,
+    theatersRank2: p.theatersRank2,
+    daysRank1: p.daysRank1,
+    daysRank2: p.daysRank2,
     dateFrom: p.dateFrom ? new Date(p.dateFrom) : null,
     dateTo: p.dateTo ? new Date(p.dateTo) : null,
-    timeWindows: p.timeWindows as string[],
-    formats: p.formats,
+    timeWindowsRank1: p.timeWindowsRank1 as string[],
+    timeWindowsRank2: p.timeWindowsRank2 as string[],
+    formatsRank1: p.formatsRank1,
+    formatsRank2: p.formatsRank2,
     ticketCount: p.ticketCount,
     maxTicketPriceCents: p.maxTicketPriceCents,
     seatRules: JSON.stringify(p.seatRules),
   };
 }
 
-function validatePreferenceDates(prefs: BookingPreferenceInput[], reply: FastifyReply): boolean {
-  for (const p of prefs) {
-    if (p.dateFrom && p.dateTo && new Date(p.dateFrom) > new Date(p.dateTo)) {
-      sendError(reply, 400, "Preference dateFrom must not be after dateTo");
-      return false;
-    }
+function validatePreferenceDates(p: BookingPreferenceInput, reply: FastifyReply): boolean {
+  if (p.dateFrom && p.dateTo && new Date(p.dateFrom) > new Date(p.dateTo)) {
+    sendError(reply, 400, "Preference dateFrom must not be after dateTo");
+    return false;
   }
   return true;
 }
 
 export async function watchesRoutes(app: FastifyInstance) {
-  const prefsInclude = { preferences: { orderBy: { rank: "asc" as const } } };
+  const prefsInclude = { preferences: true };
 
   // --- Create ------------------------------------------------------------
   app.post("/watches", async (req, reply) => {
     const parsed = CreateWatchInputSchema.safeParse(req.body);
     if (!parsed.success) return sendError(reply, 400, "Invalid watch", undefined, zodDetails(parsed.error));
     const input = parsed.data;
-    if (!validatePreferenceDates(input.preferences, reply)) return;
+    if (!validatePreferenceDates(input.preference, reply)) return;
     if (input.expiresAt && new Date(input.expiresAt) <= new Date()) {
       return sendError(reply, 400, "expiresAt must be in the future");
     }
@@ -217,7 +224,7 @@ export async function watchesRoutes(app: FastifyInstance) {
         movieTitle: input.movieTitle,
         zip: input.zip,
         expiresAt: input.expiresAt ? new Date(input.expiresAt) : null,
-        preferences: { create: input.preferences.map(preferenceData) },
+        preferences: { create: preferenceData(input.preference) },
       },
       include: prefsInclude,
     });
@@ -233,12 +240,15 @@ export async function watchesRoutes(app: FastifyInstance) {
     // Policy preview: terms the user will review before arming (unsigned).
     let preview: { terms: unknown; termsHash: string } | null = null;
     try {
+      const pref = watch.preferences[0];
+      if (!pref) throw new PolicyError("watch has no preference");
       const doc = buildPolicyDocument(
-        policyInputFor(watch, watch.preferences.map((p) => ({
-          maxTicketPriceCents: p.maxTicketPriceCents,
-          ticketCount: p.ticketCount,
-          theaterIds: p.theaterIds,
-        }))),
+        policyInputFor(watch, {
+          maxTicketPriceCents: pref.maxTicketPriceCents,
+          ticketCount: pref.ticketCount,
+          theatersRank1: pref.theatersRank1,
+          theatersRank2: pref.theatersRank2,
+        }),
       );
       preview = { terms: policyTerms(doc), termsHash: policyTermsHash(doc) };
     } catch (err) {
@@ -293,13 +303,13 @@ export async function watchesRoutes(app: FastifyInstance) {
     if (watch.status !== "CREATED") {
       return sendError(reply, 409, "Only unarmed watches can be edited — disarm first");
     }
-    if (input.preferences && !validatePreferenceDates(input.preferences, reply)) return;
+    if (input.preference && !validatePreferenceDates(input.preference, reply)) return;
 
     const updated: WatchWithPrefs = await db.$transaction(async (tx) => {
-      if (input.preferences) {
+      if (input.preference) {
         await tx.bookingPreference.deleteMany({ where: { watchId: watch.id } });
-        await tx.bookingPreference.createMany({
-          data: input.preferences.map((p) => ({ watchId: watch.id, ...preferenceData(p) })),
+        await tx.bookingPreference.create({
+          data: { watchId: watch.id, ...preferenceData(input.preference) },
         });
       }
       return tx.movieWatch.update({
@@ -353,12 +363,15 @@ export async function watchesRoutes(app: FastifyInstance) {
     // Re-mint from server-side state and bind the user's acceptance to it.
     let minted: { document: PolicyDocument; signature: string };
     try {
+      const pref = watch.preferences[0];
+      if (!pref) throw new PolicyError("watch has no preference");
       minted = mintPolicy(
-        policyInputFor(watch, watch.preferences.map((p) => ({
-          maxTicketPriceCents: p.maxTicketPriceCents,
-          ticketCount: p.ticketCount,
-          theaterIds: p.theaterIds,
-        }))),
+        policyInputFor(watch, {
+          maxTicketPriceCents: pref.maxTicketPriceCents,
+          ticketCount: pref.ticketCount,
+          theatersRank1: pref.theatersRank1,
+          theatersRank2: pref.theatersRank2,
+        }),
       );
     } catch (err) {
       if (err instanceof PolicyError) return sendError(reply, 400, "Policy rejected", undefined, err.message);

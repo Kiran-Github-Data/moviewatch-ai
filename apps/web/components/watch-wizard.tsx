@@ -4,10 +4,10 @@ import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Image from "next/image";
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
 import { useSearchParams } from "next/navigation";
 import { Button, EmptyState, StatusBadge } from "@moviewatch/ui";
-import { apiFetch } from "@/lib/api";
+import { apiFetchWithAuth } from "@/lib/api";
+import { useFreshToken } from "@/lib/use-fresh-token";
 import {
   consentSummary,
   defaultPreference,
@@ -86,7 +86,7 @@ function ReviewPreference({ p }: { p: PreferenceInput }) {
 
 export function WatchWizard() {
   const searchParams = useSearchParams();
-  const { getToken } = useAuth();
+  const getToken = useFreshToken();
 
   const tmdbId = useMemo(() => {
     const raw = searchParams.get("tmdbId");
@@ -165,11 +165,8 @@ export function WatchWizard() {
     setCreating(true);
     setApiError("");
     try {
-      const token = await getToken();
-      if (!token) throw new Error("API 401 on /watches: session expired");
       const preferences = [pref1, ...(pref2Enabled ? [pref2] : [])];
-      const res = await apiFetch<CreateWatchResponse>("/watches", {
-        token,
+      const res = await apiFetchWithAuth<CreateWatchResponse>("/watches", getToken, {
         method: "POST",
         body: {
           tmdbId,
@@ -192,11 +189,8 @@ export function WatchWizard() {
     setArming(true);
     setApiError("");
     try {
-      const token = await getToken();
-      if (!token) throw new Error("API 401 on /watches: session expired");
       const summary = consentSummary(created.policyPreview.terms);
-      const watch = await apiFetch<WatchT>(`/watches/${created.watch.id}/arm`, {
-        token,
+      const watch = await apiFetchWithAuth<WatchT>(`/watches/${created.watch.id}/arm`, getToken, {
         method: "POST",
         body: {
           acceptedPolicyHash: created.policyPreview.termsHash,

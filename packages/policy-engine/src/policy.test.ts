@@ -17,10 +17,12 @@ const baseInput = {
   watchId: "watch_1",
   userId: "user_1",
   tmdbId: 42,
-  preferences: [
-    { maxTicketPriceCents: 2000, ticketCount: 2, theaterIds: ["t1", "t2"] },
-    { maxTicketPriceCents: 2500, ticketCount: 2, theaterIds: ["t2", "t3"] },
-  ],
+  preference: {
+    maxTicketPriceCents: 2500,
+    ticketCount: 2,
+    theatersRank1: ["t1", "t2"],
+    theatersRank2: ["t3"],
+  },
   expiresAt: "2027-01-01T00:00:00.000Z",
 };
 
@@ -28,10 +30,10 @@ describe("policy engine", () => {
   it("mints a verifiable policy", () => {
     const { document, signature } = mintPolicy(baseInput, SECRET);
     assert.equal(document.version, 1);
-    assert.equal(document.maxTicketPriceCents, 2500, "takes the max across preferences");
+    assert.equal(document.maxTicketPriceCents, 2500);
     assert.equal(document.maxTotalCents, 5000);
     assert.equal(document.maxTickets, 2);
-    assert.deepEqual(document.allowedTheaterIds, ["t1", "t2", "t3"], "dedupes theaters");
+    assert.deepEqual(document.allowedTheaterIds, ["t1", "t2", "t3"], "unions rank 1 + 2 theaters");
     assert.equal(verifyPolicySignature(document, signature, SECRET), true);
   });
 
@@ -68,7 +70,7 @@ describe("policy engine", () => {
         mintPolicy(
           {
             ...baseInput,
-            preferences: [{ maxTicketPriceCents: MAX_TXN_CENTS + 1, ticketCount: 1, theaterIds: ["t1"] }],
+            preference: { maxTicketPriceCents: MAX_TXN_CENTS + 1, ticketCount: 1, theatersRank1: ["t1"], theatersRank2: [] },
           },
           SECRET,
         ),
@@ -76,15 +78,11 @@ describe("policy engine", () => {
     );
   });
 
-  it("fail-closes on empty preferences", () => {
-    assert.throws(() => mintPolicy({ ...baseInput, preferences: [] }, SECRET), PolicyError);
-  });
-
   it("fail-closes on no theaters", () => {
     assert.throws(
       () =>
         mintPolicy(
-          { ...baseInput, preferences: [{ maxTicketPriceCents: 1000, ticketCount: 2, theaterIds: [] }] },
+          { ...baseInput, preference: { maxTicketPriceCents: 1000, ticketCount: 2, theatersRank1: [], theatersRank2: [] } },
           SECRET,
         ),
       PolicyError,
