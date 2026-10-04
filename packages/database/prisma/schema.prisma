@@ -119,6 +119,11 @@ model MovieWatch {
   autoBookEnabled Boolean   @default(false)
   consentAt       DateTime?
   maxTotalCents   Int?
+  // Monitoring schedule (user-configurable): how often the agent checks this
+  // watch. One of every_15_min | hourly | every_6_hours | daily.
+  // lastCheckedAt is stamped by the scheduler after each pass.
+  checkFrequency  String    @default("every_15_min")
+  lastCheckedAt   DateTime?
   idempotencyKey  String   @unique @default(cuid())
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
