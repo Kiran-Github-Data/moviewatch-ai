@@ -1,0 +1,138 @@
+// Milestone 1 schema: foundation entities only.
+// Full entity set (MovieWatch, BookingPreference, BookingAttempt, Booking,
+// AgentEvent, AuditLog, …) lands with Milestones 3–9 per PLAN.md §13.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Platform user. Authentication is owned by Clerk; we store no passwords.
+model User {
+  id           String   @id @default(cuid())
+  clerkUserId  String   @unique
+  email        String   @unique
+  displayName  String?
+  notifyPush   Boolean  @default(true)
+  notifyEmail  Boolean  @default(true)
+  notifySms    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  watches      MovieWatch[]
+
+  @@index([clerkUserId])
+}
+
+/// Movie metadata cached from TMDB (see Milestone 2).
+/// TMDB free tier is non-commercial only — a commercial agreement is a
+/// launch blocker (PLAN.md §6 Tier 0). Cache TTL ≤ 6 months per TMDB terms.
+model Movie {
+  id               String   @id @default(cuid())
+  tmdbId           Int      @unique
+  title            String
+  releaseDate      DateTime?
+  posterPath       String?
+  backdropPath     String?
+  overview         String?
+  runtime          Int?
+  genres           String[] @default([])
+  trailerKey       String?
+  popularity       Float?
+  voteAverage      Float?
+  /// Full TMDB details payload from the last fetch (cast, trailer, …),
+  /// JSON-encoded. Served on cache hits so we don't refetch per view.
+  detailsJson      String?
+  tmdbCacheExpiresAt DateTime?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([releaseDate])
+  @@index([popularity])
+}
+
+/// Theater directory entry (populated in Milestone 5 from provider rails).
+model Theater {
+  id               String  @id @default(cuid())
+  provider         String
+  providerTheaterId String
+  name             String
+  address          String?
+  city             String?
+  zip              String?
+  latitude         Float?
+  longitude        Float?
+  timezone         String  @default("America/Chicago")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([provider, providerTheaterId])
+  @@index([zip])
+}
+
+/// A user's watch on a future movie (Milestone 3).
+/// Status follows the booking state machine (contracts: WatchStatus).
+model MovieWatch {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tmdbId          Int
+  movieTitle      String   // denormalized for list views
+  status          String   @default("CREATED")
+  zip             String
+  armedAt         DateTime?
+  expiresAt       DateTime?
+  cadenceMinutes  Int      @default(1440) // base poll cadence; adaptive in M4
+  policyDocument  String?  // signed JSON policy (policy-engine)
+  policyVersion   Int      @default(0)
+  policySignature String?  // HMAC-SHA256 of policyDocument
+  consentRecord   String?  // JSON: accepted limits summary + timestamp
+  idempotencyKey  String   @unique @default(cuid())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  preferences     BookingPreference[]
+
+  @@index([userId, status])
+  @@index([tmdbId])
+}
+
+/// One ranked booking preference within a watch (rank 1 or 2).
+model BookingPreference {
+  id                   String   @id @default(cuid())
+  watchId              String
+  watch                MovieWatch @relation(fields: [watchId], references: [id], onDelete: Cascade)
+  rank                 Int      // 1 | 2
+  theaterIds           String[] @default([])
+  daysOfWeek           Int[]    @default([]) // 0=Sun..6=Sat; empty = any day
+  dateFrom             DateTime?
+  dateTo               DateTime?
+  timeWindows          String[] @default([]) // morning|afternoon|evening|late-night or HH:MM-HH:MM
+  formats              String[] @default([]) // IMAX, XD, Dolby, ...
+  ticketCount          Int      @default(2)
+  maxTicketPriceCents  Int
+  seatRules            String?  // JSON SeatPreference
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@unique([watchId, rank])
+}
+
+/// Tamper-evident audit trail (Milestone 3). Hash-chained per resource.
+model AuditLog {
+  id            String   @id @default(cuid())
+  actorType     String   // "user" | "system" | "workflow"
+  actorId       String
+  action        String
+  resourceType  String
+  resourceId    String
+  policyVersion Int?
+  prevHash      String?
+  hash          String
+  createdAt     DateTime @default(now())
+
+  @@index([resourceType, resourceId])
+  @@index([actorId])
+}
