@@ -1,1 +1,23 @@
-{"description":"MovieWatch AI — AI-powered future movie ticket auto-booking platform","devDependencies":{"turbo":"^2.5.4","typescript":"^5.7.3"},"engines":{"node":">=20"},"name":"moviewatch-ai","packageManager":"pnpm@12.9.1","pnpm":{"onlyBuiltDependencies":["@clerk/shared","@prisma/client","@prisma/engines","esbuild","prisma"]},"private":true,"scripts":{"build":"turbo run build","db:migrate":"turbo run db:migrate --filter=@moviewatch/database","db:studio":"turbo run db:studio --filter=@moviewatch/database","dev":"turbo run dev","lint":"turbo run lint","test":"turbo run test","typecheck":"turbo run typecheck"},"version":"0.1.0"}
+{
+  "description": "MovieWatch AI \u2014 AI-powered future movie ticket auto-booking platform",
+  "devDependencies": {
+    "turbo": "^2.5.4",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "name": "moviewatch-ai",
+  "packageManager": "pnpm@12.9.1",
+  "private": true,
+  "scripts": {
+    "build": "turbo run build",
+    "db:migrate": "turbo run db:migrate --filter=@moviewatch/database",
+    "db:studio": "turbo run db:studio --filter=@moviewatch/database",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck"
+  },
+  "version": "0.1.0"
+}
