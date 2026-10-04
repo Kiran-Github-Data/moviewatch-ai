@@ -38,10 +38,13 @@ body {
   font-family: var(--font-mono), ui-monospace, monospace;
 }
 
-/* Richer cinematic base — deep black with warm gold ambience (single accent) */
+/* Richer cinematic base — deep black with warm gold ambience (single accent).
+   The solid color MUST come last so it layers underneath the gradient;
+   without it the gradient's transparent fade shows the default white. */
 .cinema-glow {
   background:
-    radial-gradient(60% 45% at 50% 0%, rgba(232, 179, 75, 0.1), transparent 70%);
+    radial-gradient(60% 45% at 50% 0%, rgba(232, 179, 75, 0.1), transparent 70%),
+    var(--mw-bg);
 }
 
 /* ---------- signature effect utilities ---------- */
