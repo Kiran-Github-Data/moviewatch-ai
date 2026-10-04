@@ -64,7 +64,7 @@ export default async function MovieDetailPage({ params }: { params: Promise<{ id
         ) : (
           <div className="h-full w-full bg-gradient-to-br from-white/[0.06] to-transparent" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#08080c] via-[#08080c]/50 to-[#08080c]/20" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0b] via-[#0a0a0b]/50 to-[#0a0a0b]/20" />
         <div className="absolute inset-x-0 top-0">
           <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
             <Link href="/"><Logo /></Link>
@@ -86,8 +86,8 @@ export default async function MovieDetailPage({ params }: { params: Promise<{ id
             </div>
           )}
           <div className="flex min-w-0 flex-col justify-end md:pb-2 md:pt-28">
-            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">{details.title}</h1>
-            <p className="mt-3 text-white/55">{formatDate(details.releaseDate)}</p>
+            <h1 className="font-display text-4xl font-bold tracking-tight sm:text-5xl">{details.title}</h1>
+            <p className="mt-3 text-white/70">{formatDate(details.releaseDate)}</p>
             <div className="mt-4 flex flex-wrap items-center gap-2">
               {details.genres.map((g) => (
                 <span key={g} className="rounded-full border border-white/10 bg-white/[0.04] px-3.5 py-1.5 text-xs font-medium text-white/70 backdrop-blur-sm">
@@ -95,7 +95,7 @@ export default async function MovieDetailPage({ params }: { params: Promise<{ id
                 </span>
               ))}
               {runtime && (
-                <span className="px-1 text-sm tabular-nums text-white/75">{runtime}</span>
+                <span className="px-1 text-sm tabular-nums text-white/70">{runtime}</span>
               )}
               {details.voteAverage > 0 && (
                 <span className="inline-flex items-center gap-1.5 font-bold text-gold">
@@ -117,7 +117,7 @@ export default async function MovieDetailPage({ params }: { params: Promise<{ id
                   </span>
                 </Button>
               </Link>
-              <p className="mt-3 text-sm text-white/45">
+              <p className="mt-3 text-sm text-white/70">
                 We&apos;ll watch for tickets and book automatically within your limits.
               </p>
             </div>
@@ -127,7 +127,7 @@ export default async function MovieDetailPage({ params }: { params: Promise<{ id
         {details.overview && (
           <section className="mt-12 max-w-3xl">
             <h2 className="mb-3 text-xl font-bold tracking-tight">Overview</h2>
-            <p className="text-[17px] leading-relaxed text-white/75">{details.overview}</p>
+            <p className="text-[17px] leading-relaxed text-white/70">{details.overview}</p>
           </section>
         )}
 
@@ -168,7 +168,7 @@ export default async function MovieDetailPage({ params }: { params: Promise<{ id
                   </div>
                   <div className="p-3">
                     <p className="truncate text-xs font-semibold">{c.name}</p>
-                    <p className="mt-0.5 truncate text-xs text-white/45">{c.character}</p>
+                    <p className="mt-0.5 truncate text-xs text-white/70">{c.character}</p>
                   </div>
                 </div>
               ))}

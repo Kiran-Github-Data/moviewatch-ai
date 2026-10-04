@@ -9,14 +9,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#0a0a0f",
-        surface: "#12121a",
+        ink: "#0a0a0b",
+        surface: "#141416",
+        "surface-2": "#1c1c1f",
         gold: "#e8b34b",
+        "on-gold": "#0a0a0b",
         cream: "#f4f1ea",
-        muted: "#9a97a3",
+        muted: "#a1a1aa",
+        faint: "#71717a",
+        border: "#27272a",
       },
       fontFamily: {
         display: ["var(--font-display)", "system-ui", "sans-serif"],
+        body: ["var(--font-body)", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
     },
   },

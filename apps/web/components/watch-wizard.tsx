@@ -46,17 +46,20 @@ import {
   ZapIcon,
 } from "@/components/icons";
 import {
+  BlurFade,
   Chip,
   Collapsible,
   FieldError,
   GlassCard,
   RankBadge,
   SelectedRing,
+  ShimmerButton,
   Skeleton,
   SkeletonCard,
   StepHeading,
   StepProgress,
   Stepper,
+  TheaterErrorState,
   Toggle,
 } from "@/components/ui-kit";
 
@@ -536,10 +539,10 @@ export function WatchWizard() {
       <AnimatePresence mode="wait">
         <motion.div
           key={step}
-          initial={{ opacity: 0, x: 32 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -32 }}
-          transition={{ duration: 0.28, ease: "easeOut" }}
+          initial={{ opacity: 0, x: 32, filter: "blur(8px)" }}
+          animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+          exit={{ opacity: 0, x: -32, filter: "blur(8px)" }}
+          transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
         >
           {/* ============ STEP 0 — Movie ============ */}
           {step === 0 && (
@@ -626,7 +629,7 @@ export function WatchWizard() {
                 subtitle="Enter your ZIP code and we'll pull up every theater nearby — no typing theater names by hand."
               />
               <GlassCard className="p-6 sm:p-8">
-                <label htmlFor="zip" className="mb-3 flex items-center gap-2 text-sm font-semibold">
+                <label htmlFor="zip" className="mb-3 flex items-center gap-2 text-base font-semibold">
                   <MapPinIcon className="h-4 w-4 text-gold" /> ZIP code
                 </label>
                 <input
@@ -641,7 +644,7 @@ export function WatchWizard() {
                   }}
                   placeholder="75078"
                   autoComplete="postal-code"
-                  className="w-48 rounded-2xl border border-white/10 bg-black/40 px-5 py-3.5 text-2xl font-semibold tracking-[0.3em] outline-none transition-colors placeholder:text-white/45 focus:border-gold/60"
+                  className="w-48 rounded-2xl border border-white/10 bg-black/40 px-5 py-3.5 text-2xl font-semibold tracking-[0.3em] outline-none transition-colors placeholder:text-white/70 focus:border-gold/60"
                 />
                 <FieldError message={zipTouched && !zipValid ? "Enter a valid 5-digit ZIP code." : undefined} />
 
@@ -656,15 +659,12 @@ export function WatchWizard() {
                     </div>
                   )}
                   {theatersError && (
-                    <div className="rounded-2xl border border-red-400/25 bg-red-400/[0.07] px-5 py-4">
-                      <p className="text-sm text-red-300">{theatersError}</p>
-                      <button
-                        type="button"
-                        onClick={() => setTheaterRetry((n) => n + 1)}
-                        className="mt-2 text-sm font-semibold text-gold hover:underline"
-                      >
-                        Try again
-                      </button>
+                    <div className="mt-6">
+                      <TheaterErrorState
+                        message={theatersError}
+                        zip={zip}
+                        onRetry={() => setTheaterRetry((n) => n + 1)}
+                      />
                     </div>
                   )}
                   {theaters && !theatersLoading && (
@@ -787,7 +787,7 @@ export function WatchWizard() {
                       <span className="block text-sm font-semibold">
                         {WINDOW_META[w]?.label}
                       </span>
-                      <span className="mt-0.5 block text-xs text-white/45">
+                      <span className="mt-0.5 block text-xs text-white/70">
                         {WINDOW_META[w]?.hint}
                       </span>
                     </button>
@@ -839,7 +839,7 @@ export function WatchWizard() {
                       setCustomWindowError("");
                     }}
                     placeholder="19:30-22:00"
-                    className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm outline-none placeholder:text-white/45 focus:border-gold/60"
+                    className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-2.5 text-sm outline-none placeholder:text-white/70 focus:border-gold/60"
                   />
                   <Button type="button" variant="ghost" size="sm" onClick={() => addCustomWindow(1)}>
                     Add
@@ -906,10 +906,10 @@ export function WatchWizard() {
               />
               <div className="space-y-6">
                 <GlassCard className="p-6">
-                  <p className="mb-1 flex items-center gap-2 text-sm font-semibold">
+                  <p className="mb-1 flex items-center gap-2 text-base font-semibold">
                     <CalendarIcon className="h-4 w-4 text-gold" /> Preferred days
                   </p>
-                  <p className="mb-3 text-xs text-white/45">Leave empty for any day.</p>
+                  <p className="mb-3 text-xs text-white/70">Leave empty for any day.</p>
                   <div className="flex flex-wrap gap-2">
                     {DAY_LABELS.map((label, i) => (
                       <Chip
@@ -1109,11 +1109,10 @@ export function WatchWizard() {
 
               {!created ? (
                 <div className="mt-8">
-                  <Button
-                    size="lg"
+                  <ShimmerButton
                     onClick={createWatch}
                     disabled={creating}
-                    className="bg-gradient-to-br from-amber-300 to-amber-600 shadow-[0_8px_32px_rgba(232,179,75,0.3)] hover:brightness-110"
+                    className="!px-8 !py-4 !text-lg"
                   >
                     {creating ? (
                       <span className="flex items-center gap-2">
@@ -1125,7 +1124,7 @@ export function WatchWizard() {
                         <ZapIcon className="h-5 w-5" /> Create watch & show spending limits
                       </span>
                     )}
-                  </Button>
+                  </ShimmerButton>
                   {apiError && (
                     <p className="mt-3 text-sm text-red-400">{apiError}</p>
                   )}
@@ -1163,11 +1162,10 @@ export function WatchWizard() {
                     </span>
                   </label>
                   <div>
-                    <Button
-                      size="lg"
+                    <ShimmerButton
                       onClick={armWatch}
                       disabled={!consent || arming}
-                      className="bg-gradient-to-br from-amber-300 to-amber-600 shadow-[0_8px_32px_rgba(232,179,75,0.3)] hover:brightness-110"
+                      className="!px-8 !py-4 !text-lg"
                     >
                       {arming ? (
                         <span className="flex items-center gap-2">
@@ -1179,7 +1177,7 @@ export function WatchWizard() {
                           <BellIcon className="h-5 w-5" /> Arm my watch
                         </span>
                       )}
-                    </Button>
+                    </ShimmerButton>
                     {apiError && <p className="mt-3 text-sm text-red-400">{apiError}</p>}
                   </div>
                 </motion.div>
@@ -1207,14 +1205,9 @@ export function WatchWizard() {
               <ArrowLeftIcon className="h-4 w-4" /> Back
             </span>
           </Button>
-          <Button
-            onClick={next}
-            className="bg-gradient-to-br from-amber-300 to-amber-600 shadow-[0_8px_32px_rgba(232,179,75,0.25)] hover:brightness-110"
-          >
-            <span className="flex items-center gap-2">
-              {step === 5 ? "Review" : "Continue"} <ArrowRightIcon className="h-4 w-4" />
-            </span>
-          </Button>
+          <ShimmerButton onClick={next}>
+            {step === 5 ? "Review" : "Continue"} <ArrowRightIcon className="h-4 w-4" />
+          </ShimmerButton>
         </div>
       )}
       {step === 6 && !created && (
@@ -1249,7 +1242,7 @@ function RankGroup({
         <RankBadge rank={rank} />
         <div>
           <p className="text-sm font-semibold">{label}</p>
-          <p className="text-xs text-white/45">{hint}</p>
+          <p className="text-xs text-white/70">{hint}</p>
         </div>
       </div>
       {children}

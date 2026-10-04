@@ -18,8 +18,9 @@ import {
   CalendarIcon,
   MapPinIcon,
   PlusIcon,
+  TicketIcon,
 } from "@/components/icons";
-import { GlassCard, RankBadge, SkeletonCard } from "@/components/ui-kit";
+import { GlassCard, NumberTicker, RankBadge, SkeletonCard } from "@/components/ui-kit";
 
 const TERMINAL = new Set(["BOOKED", "CANCELLED", "FAILED", "EXPIRED"]);
 const DISARMABLE = new Set(["ARMED", "MONITORING", "WAITING_FOR_RELEASE"]);
@@ -34,12 +35,12 @@ const WINDOW_LABELS: Record<string, string> = {
 function DimBadge({ label, rank1, rank2 }: { label: string; rank1: string; rank2?: string }) {
   return (
     <div className="flex items-start gap-2 text-xs">
-      <span className="w-16 shrink-0 pt-0.5 font-semibold uppercase tracking-wider text-white/35">
+      <span className="w-16 shrink-0 pt-0.5 font-semibold uppercase tracking-wider text-white/70">
         {label}
       </span>
       <div className="min-w-0">
-        <p className="truncate font-medium text-white/90">{rank1}</p>
-        {rank2 && <p className="truncate text-white/75">{rank2}</p>}
+        <p className="truncate font-medium text-white">{rank1}</p>
+        {rank2 && <p className="truncate text-white/70">{rank2}</p>}
       </div>
     </div>
   );
@@ -91,7 +92,7 @@ function WatchCard({
               <h3 className="text-xl font-bold tracking-tight">{watch.movieTitle}</h3>
               <StatusBadge status={watch.status} />
             </div>
-            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/75">
+            <p className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-white/70">
               <span className="inline-flex items-center gap-1">
                 <MapPinIcon className="h-3.5 w-3.5" /> {watch.zip}
               </span>
@@ -192,6 +193,8 @@ export function WatchList() {
     );
   }
 
+  const active = watches.filter((w) => !TERMINAL.has(w.status));
+
   return (
     <div>
       {error && (
@@ -211,20 +214,48 @@ export function WatchList() {
           }
         />
       ) : (
-        <div className="space-y-5">
-          {watches.map((w, i) => (
-            <WatchCard key={w.id} watch={w} acting={acting} onAct={act} index={i} />
-          ))}
-          <div className="pt-2">
-            <Link href="/movies">
-              <Button variant="ghost">
-                <span className="flex items-center gap-2">
-                  <PlusIcon className="h-4 w-4" /> Watch another movie
-                </span>
-              </Button>
-            </Link>
+        <>
+          {/* status-first summary */}
+          <GlassCard className="mb-6 flex flex-wrap items-center gap-x-10 gap-y-4 p-6">
+            <div className="flex items-center gap-4">
+              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gold/10 text-gold">
+                <TicketIcon className="h-6 w-6" />
+              </span>
+              <div>
+                <p className="font-display text-3xl font-bold tabular-nums">
+                  <NumberTicker value={active.length} />
+                </p>
+                <p className="text-xs font-medium uppercase tracking-wider text-white/70">
+                  active {active.length === 1 ? "watch" : "watches"}
+                </p>
+              </div>
+            </div>
+            <div className="h-10 w-px bg-white/[0.08]" aria-hidden />
+            <div>
+              <p className="font-display text-3xl font-bold tabular-nums">
+                <NumberTicker value={watches.length - active.length} />
+              </p>
+              <p className="text-xs font-medium uppercase tracking-wider text-white/70">
+                completed
+              </p>
+            </div>
+            <div className="ml-auto">
+              <Link href="/movies">
+                <Button variant="ghost" size="sm">
+                  <span className="flex items-center gap-2">
+                    <PlusIcon className="h-4 w-4" /> New watch
+                  </span>
+                </Button>
+              </Link>
+            </div>
+          </GlassCard>
+
+          <div className="space-y-5">
+            {watches.map((w, i) => (
+              <WatchCard key={w.id} watch={w} acting={acting} onAct={act} index={i} />
+            ))}
           </div>
-        </div>
+        </>
       )}
     </div>
   );

@@ -194,7 +194,7 @@ export function StepProgress({
             key={s}
             className={cn(
               "hidden text-[11px] sm:block",
-              i === current ? "font-medium text-gold" : i < current ? "text-white/80" : "text-white/25",
+              i === current ? "font-medium text-gold" : i < current ? "text-white/70" : "text-white/50",
             )}
           >
             {s}
@@ -284,8 +284,8 @@ export function StepHeading({
 }) {
   return (
     <div className="mb-8">
-      <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
-      {subtitle && <p className="mt-2 max-w-lg text-white/55">{subtitle}</p>}
+      <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">{title}</h1>
+      {subtitle && <p className="mt-2 max-w-lg text-white/70">{subtitle}</p>}
     </div>
   );
 }
@@ -302,5 +302,218 @@ export function SelectedRing({ show, gold = true }: { show: boolean; gold?: bool
     >
       <CheckIcon className="h-4 w-4" />
     </span>
+  );
+}
+
+/* ==================== signature effects (21st.dev-inspired) ==================== */
+
+/* ---------- ShimmerButton: primary gold CTA with shimmer sweep ---------- */
+export function ShimmerButton({
+  children,
+  onClick,
+  disabled,
+  className,
+  type = "button",
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  className?: string;
+  type?: "button" | "submit";
+}) {
+  return (
+    <motion.button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      whileTap={{ scale: 0.98 }}
+      className={cn(
+        "mw-shimmer inline-flex items-center justify-center gap-2 rounded-full",
+        "bg-gradient-to-br from-amber-300 to-amber-600 font-display font-semibold text-black",
+        "shadow-[0_8px_32px_rgba(232,179,75,0.35)] transition-all duration-200",
+        "hover:brightness-110 hover:shadow-[0_8px_40px_rgba(232,179,75,0.45)]",
+        "disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:brightness-100",
+        "px-7 py-3.5 text-base",
+        className,
+      )}
+    >
+      {children}
+    </motion.button>
+  );
+}
+
+/* ---------- BlurFade: blur-to-focus staggered entrance ---------- */
+export function BlurFade({
+  children,
+  delay = 0,
+  y = 20,
+  className,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  y?: number;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y, filter: "blur(8px)" }}
+      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      transition={{ duration: 0.55, delay, ease: [0.22, 1, 0.36, 1] }}
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+}
+
+/* ---------- Spotlight: theatrical stage-lighting hero layers ---------- */
+export function Spotlight({ className }: { className?: string }) {
+  return (
+    <div className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)} aria-hidden>
+      <div
+        className="mw-spotlight absolute -top-[10%] left-[8%] h-[60vh] w-[42vw]"
+        style={{
+          background:
+            "radial-gradient(50% 50% at 50% 50%, rgba(232,179,75,0.16), transparent 70%)",
+        }}
+      />
+      <div
+        className="mw-spotlight absolute -top-[16%] right-[4%] h-[52vh] w-[36vw]"
+        style={{
+          background:
+            "radial-gradient(50% 50% at 50% 50%, rgba(232,179,75,0.1), transparent 70%)",
+          animationDelay: "-7s",
+          animationDuration: "18s",
+        }}
+      />
+      <div
+        className="absolute inset-x-0 bottom-0 h-[40vh]"
+        style={{
+          background:
+            "linear-gradient(to top, var(--mw-bg) 0%, transparent 100%)",
+        }}
+      />
+    </div>
+  );
+}
+
+/* ---------- Scrim: legibility gradient over imagery ---------- */
+export function Scrim({ className }: { className?: string }) {
+  return <div aria-hidden className={cn("mw-scrim pointer-events-none absolute inset-0", className)} />;
+}
+
+/* ---------- CardSpotlight: cursor-tracked glow inside a card ---------- */
+export function CardSpotlight({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const ref = React.useRef<HTMLDivElement>(null);
+  const [pos, setPos] = React.useState({ x: -400, y: -400 });
+  const [active, setActive] = React.useState(false);
+
+  return (
+    <div
+      ref={ref}
+      onMouseMove={(e) => {
+        const r = ref.current?.getBoundingClientRect();
+        if (!r) return;
+        setPos({ x: e.clientX - r.left, y: e.clientY - r.top });
+      }}
+      onMouseEnter={() => setActive(true)}
+      onMouseLeave={() => setActive(false)}
+      className={cn("group/spot relative overflow-hidden", className)}
+    >
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-10 transition-opacity duration-300"
+        style={{
+          opacity: active ? 1 : 0,
+          background: `radial-gradient(320px circle at ${pos.x}px ${pos.y}px, rgba(232,179,75,0.14), transparent 65%)`,
+        }}
+      />
+      {children}
+    </div>
+  );
+}
+
+/* ---------- Marquee: infinite rail with edge fade ---------- */
+export function Marquee({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("mw-marquee-mask overflow-hidden", className)}>
+      <div className="mw-marquee-track flex w-max gap-5">
+        {children}
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- NumberTicker: animated count-up ---------- */
+export function NumberTicker({
+  value,
+  className,
+}: {
+  value: number;
+  className?: string;
+}) {
+  const [display, setDisplay] = React.useState(0);
+  React.useEffect(() => {
+    let raf = 0;
+    const start = performance.now();
+    const dur = 1200;
+    const tick = (now: number) => {
+      const p = Math.min((now - start) / dur, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplay(Math.round(eased * value));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [value]);
+  return <span className={cn("tabular-nums", className)}>{display.toLocaleString()}</span>;
+}
+
+/* ---------- TheaterErrorState: designed empty/error state ---------- */
+export function TheaterErrorState({
+  message,
+  onRetry,
+  zip,
+}: {
+  message: string;
+  onRetry: () => void;
+  zip: string;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="rounded-3xl border border-white/[0.08] bg-black/60 p-8 text-center backdrop-blur-xl"
+    >
+      <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gold/10 text-gold">
+        <AlertIcon className="h-7 w-7" />
+      </span>
+      <h3 className="font-display mt-5 text-xl font-semibold tracking-tight">
+        We couldn&apos;t load theaters
+      </h3>
+      <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-white/70">{message}</p>
+      <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <ShimmerButton onClick={onRetry} className="!px-6 !py-2.5 !text-sm">
+          Try again
+        </ShimmerButton>
+        <p className="text-xs text-white/70">
+          Still stuck? Double-check the ZIP{" "}
+          <span className="font-mono2 font-semibold text-white">{zip || "—"}</span> and retry.
+        </p>
+      </div>
+    </motion.div>
   );
 }

@@ -6,15 +6,63 @@
 body {
   background: var(--mw-bg);
   color: var(--mw-text);
+  font-family: var(--font-body), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Richer cinematic base — deep black with warm gold + cool blue ambience */
+.font-display {
+  font-family: var(--font-display), system-ui, sans-serif;
+}
+
+.font-mono2 {
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+/* Richer cinematic base — deep black with warm gold ambience (single accent) */
 .cinema-glow {
   background:
-    radial-gradient(60% 45% at 50% 0%, rgba(232, 179, 75, 0.1), transparent 70%),
-    radial-gradient(40% 30% at 85% 20%, rgba(96, 165, 250, 0.06), transparent 70%);
+    radial-gradient(60% 45% at 50% 0%, rgba(232, 179, 75, 0.1), transparent 70%);
+}
+
+/* ---------- signature effect utilities ---------- */
+
+/* Theatrical spotlight: layered radial gradients drifting horizontally */
+.mw-spotlight {
+  pointer-events: none;
+  animation: mw-spotlight-drift 14s ease-in-out infinite;
+}
+
+/* Shimmer sweep for primary gold CTAs */
+.mw-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.mw-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
+  animation: mw-shimmer-sweep 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Marquee rail with edge fade */
+.mw-marquee-mask {
+  mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, black 8%, black 92%, transparent);
+}
+.mw-marquee-track {
+  animation: mw-marquee 42s linear infinite;
+}
+.mw-marquee-mask:hover .mw-marquee-track {
+  animation-play-state: paused;
+}
+
+/* Scrim: gradient overlay so text stays legible over imagery */
+.mw-scrim {
+  background: linear-gradient(to top, rgba(0,0,0,0.92) 0%, rgba(0,0,0,0.45) 55%, transparent 100%);
 }
 
 /* Refined scrollbar for the dark theme */
@@ -40,4 +88,10 @@ body {
 /* Native inputs inherit the dark scheme */
 input, select, textarea {
   color-scheme: dark;
+}
+
+/* Focus visibility for keyboard users */
+:focus-visible {
+  outline: 2px solid var(--mw-gold);
+  outline-offset: 2px;
 }
