@@ -1,0 +1,27 @@
+import { z } from "zod";
+
+const EnvSchema = z.object({
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  PORT: z.coerce.number().int().positive().default(4000),
+  CLERK_JWKS_URL: z.string().url(),
+  CLERK_ISSUER: z.string().url(),
+  DATABASE_URL: z.string().min(1),
+  WEB_ORIGIN: z.string().url().default("http://localhost:3000"),
+  // TMDB (Milestone 2). v4 read-access token preferred; v3 API key also works.
+  // Optional at boot — /movies endpoints return 503 until configured.
+  TMDB_READ_ACCESS_TOKEN: z.string().min(1).optional(),
+  TMDB_API_KEY: z.string().min(1).optional(),
+  // Policy signing (Milestone 3). Required to arm watches.
+  POLICY_SIGNING_SECRET: z.string().min(32, "use at least 32 characters"),
+});
+
+export type Env = z.infer<typeof EnvSchema>;
+
+export function loadEnv(): Env {
+  const parsed = EnvSchema.safeParse(process.env);
+  if (!parsed.success) {
+    const issues = parsed.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`);
+    throw new Error(`Invalid environment:\n  ${issues.join("\n  ")}`);
+  }
+  return parsed.data;
+}
