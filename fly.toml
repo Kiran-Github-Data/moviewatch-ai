@@ -1,0 +1,35 @@
+# Fly.io config for the MovieWatch orchestrator API.
+# Deploy from the repo root: fly deploy
+
+app = "moviewatch-api"
+primary_region = "dfw"
+
+[build]
+  dockerfile = "apps/orchestrator-api/Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 0
+  [http_service.concurrency]
+    type = "connections"
+    hard_limit = 25
+    soft_limit = 20
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  path = "/health"
+  protocol = "http"
+  timeout = "5s"
+
+# Runs prisma migrate deploy before each release (no-ops when already applied).
+[deploy]
+  release_command = "pnpm --filter @moviewatch/database exec prisma migrate deploy"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "8080"
